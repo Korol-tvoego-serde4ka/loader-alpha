@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" 
+             Name="Minecraft Loader" 
+             Language="1033" 
+             Version="1.0.0.0" 
+             Manufacturer="Your Company" 
+             UpgradeCode="PUT-GUID-HERE">
+        
+        <Package InstallerVersion="200" 
+                 Compressed="yes" 
+                 InstallScope="perMachine" />
+
+        <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+        <MediaTemplate EmbedCab="yes" />
+
+        <Feature Id="ProductFeature" Title="MinecraftLoader" Level="1">
+            <ComponentGroupRef Id="ProductComponents" />
+        </Feature>
+
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="MinecraftLoader">
+                    <Component Id="ProductComponents" Guid="*">
+                        <File Id="LoaderEXE" 
+                              Source="$(var.SourceDir)\Loader.exe" 
+                              KeyPath="yes" />
+                        <File Id="SettingsJSON" 
+                              Source="$(var.SourceDir)\settings.json" />
+                        <File Id="README" 
+                              Source="$(var.SourceDir)\README.txt" />
+                    </Component>
+                </Directory>
+            </Directory>
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="MinecraftLoader">
+                    <Component Id="ApplicationShortcut" Guid="*">
+                        <Shortcut Id="ApplicationStartMenuShortcut" 
+                                 Name="Minecraft Loader" 
+                                 Description="Minecraft Loader with key authentication" 
+                                 Target="[#LoaderEXE]" 
+                                 WorkingDirectory="INSTALLFOLDER" />
+                        <RemoveFolder Id="CleanUpShortCut" 
+                                     Directory="ApplicationProgramsFolder" 
+                                     On="uninstall" />
+                        <RegistryValue Root="HKCU" 
+                                     Key="Software\MinecraftLoader" 
+                                     Name="installed" 
+                                     Type="integer" 
+                                     Value="1" 
+                                     KeyPath="yes" />
+                    </Component>
+                </Directory>
+            </Directory>
+            <Directory Id="DesktopFolder">
+                <Component Id="DesktopShortcut" Guid="*">
+                    <Shortcut Id="ApplicationDesktopShortcut" 
+                             Name="Minecraft Loader" 
+                             Description="Minecraft Loader with key authentication" 
+                             Target="[#LoaderEXE]" 
+                             WorkingDirectory="INSTALLFOLDER" />
+                    <RemoveFolder Id="CleanUpDesktopShortcut" 
+                                 Directory="DesktopFolder" 
+                                 On="uninstall" />
+                    <RegistryValue Root="HKCU" 
+                                 Key="Software\MinecraftLoader" 
+                                 Name="installed" 
+                                 Type="integer" 
+                                 Value="1" 
+                                 KeyPath="yes" />
+                </Component>
+            </Directory>
+        </Directory>
+
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+        <UIRef Id="WixUI_InstallDir" />
+        <UIRef Id="WixUI_ErrorProgressText" />
+
+        <Icon Id="icon.ico" SourceFile="$(var.SourceDir)\Resources\icon.ico" />
+        <Property Id="ARPPRODUCTICON" Value="icon.ico" />
+    </Product>
+</Wix> 
