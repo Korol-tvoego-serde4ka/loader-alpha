@@ -45,13 +45,13 @@
 
 1. Установка зависимостей:
 ```bash
-sudo apt update
-sudo apt install python3.8 python3.8-venv nodejs npm postgresql nginx redis-server
+apt update
+apt install python3.8 python3.8-venv nodejs npm postgresql nginx redis-server
 ```
 
 2. Настройка базы данных:
 ```bash
-sudo -u postgres psql
+psql -U postgres
 CREATE DATABASE minecraft_loader;
 CREATE USER loader_user WITH PASSWORD 'your_password';
 GRANT ALL PRIVILEGES ON DATABASE minecraft_loader TO loader_user;
@@ -101,6 +101,14 @@ python bot.py
 1. Скачайте последнюю версию лоадера с сайта
 2. Запустите установщик
 3. Следуйте инструкциям установщика
+
+## Полезные ссылки
+
+- [Инструкция по настройке сервера](docs/server-setup.md)
+- [Руководство по установке клиента](docs/client-installation.md)
+- [Документация по API](docs/api-documentation.md)
+- [Руководство по настройке Discord бота](docs/discord-bot-setup.md)
+- [Часто задаваемые вопросы](docs/faq.md)
 
 ## Безопасность
 
