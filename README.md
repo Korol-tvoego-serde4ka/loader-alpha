@@ -59,8 +59,8 @@ GRANT ALL PRIVILEGES ON DATABASE minecraft_loader TO loader_user;
 
 3. Клонирование репозитория:
 ```bash
-git clone [repository_url]
-cd minecraft-loader
+git clone https://github.com/Korol-tvoego-serde4ka/loader-alpha.git
+cd loader-alpha
 ```
 
 4. Установка Python зависимостей:
