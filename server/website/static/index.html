@@ -276,6 +276,7 @@
                         <table class="table table-dark">
                             <thead>
                                 <tr>
+                                    <th><input type="checkbox" id="select-all-invites" title="Выбрать все"></th>
                                     <th>Код</th>
                                     <th>Создан</th>
                                     <th>Истекает</th>
@@ -292,6 +293,7 @@
                 </div>
                 <div class="card-footer">
                     <button id="generate-invite-button" class="btn btn-primary">Создать приглашение</button>
+                    <button id="delete-selected-invites-button" class="btn btn-danger ml-2" style="display: none;">Удалить выбранные</button>
                 </div>
             </div>
         </div>
@@ -400,6 +402,9 @@
                 <li class="nav-item">
                     <a class="nav-link" id="keys-tab" data-toggle="tab" href="#keys-admin" role="tab">Ключи</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="all-keys-tab" data-toggle="tab" href="#all-keys" role="tab">Все ключи</a>
+                </li>
             </ul>
             
             <div class="tab-content" id="adminTabsContent">
@@ -463,6 +468,39 @@
                                 </div>
                                 <button type="submit" class="btn btn-primary">Сгенерировать</button>
                             </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="all-keys" role="tabpanel">
+                    <div class="card bg-secondary mt-4">
+                        <div class="card-header">
+                            <h4>Все ключи</h4>
+                        </div>
+                        <div class="card-body">
+                            <div id="all-keys-loading" class="text-center">
+                                <div class="spinner-border text-light" role="status">
+                                    <span class="sr-only">Загрузка...</span>
+                                </div>
+                            </div>
+                            <div id="all-keys-list" style="display: none;">
+                                <table class="table table-dark">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Ключ</th>
+                                            <th>Создан</th>
+                                            <th>Истекает</th>
+                                            <th>Остаток времени</th>
+                                            <th>Владелец</th>
+                                            <th>Статус</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="all-keys-table-body">
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>

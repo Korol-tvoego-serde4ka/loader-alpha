@@ -1006,6 +1006,119 @@ class GetInviteLimits(Resource):
             # Возвращаем ошибку в формате JSON
             return {"message": f"Ошибка при получении лимитов приглашений: {str(e)}"}, 500
 
+class AdminDeleteMultipleInvites(Resource):
+    @jwt_required()
+    def post(self):
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для удаления инвайтов"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Получение списка ID инвайтов для удаления
+            data = request.get_json()
+            invite_ids = data.get("invite_ids", [])
+            
+            if not invite_ids:
+                return {"message": "Не указаны ID инвайтов для удаления"}, 400
+            
+            # Удаление инвайтов
+            deleted_count = 0
+            for invite_id in invite_ids:
+                invite = db.query(Invite).filter(Invite.id == invite_id).first()
+                if invite:
+                    db.delete(invite)
+                    deleted_count += 1
+            
+            db.commit()
+            
+            return {
+                "message": f"Удалено инвайтов: {deleted_count}",
+                "deleted_count": deleted_count
+            }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при удалении инвайтов: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при удалении инвайтов: {str(e)}"}, 500
+
+class AdminGetAllKeys(Resource):
+    @jwt_required()
+    def get(self):
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для просмотра всех ключей"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Получение всех ключей с данными о пользователях
+            keys = db.query(Key).all()
+            
+            return {
+                "keys": [
+                    {
+                        "id": key.id,
+                        "key": key.key,
+                        "created_at": key.created_at.isoformat(),
+                        "expires_at": key.expires_at.isoformat(),
+                        "is_active": key.is_active and not key.is_expired(),
+                        "time_left": key.time_left(),
+                        "user": {
+                            "id": key.user.id,
+                            "username": key.user.username
+                        } if key.user else None
+                    } for key in keys
+                ]
+            }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при получении списка ключей: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при получении списка ключей: {str(e)}"}, 500
+
+class AdminRevokeKey(Resource):
+    @jwt_required()
+    def post(self, key_id):
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для отзыва ключа"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Поиск ключа
+            key = db.query(Key).filter(Key.id == key_id).first()
+            if not key:
+                return {"message": "Ключ не найден"}, 404
+                
+            # Отзыв ключа (деактивация)
+            key.is_active = False
+            db.commit()
+            
+            return {"message": "Ключ успешно отозван"}
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при отзыве ключа: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при отзыве ключа: {str(e)}"}, 500
+
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
 api.add_resource(Register, "/api/users/register")
@@ -1029,6 +1142,9 @@ api.add_resource(AdminDeleteInvite, "/api/admin/invites/<int:invite_id>/delete")
 api.add_resource(AdminSetInviteLimits, "/api/admin/invites/limits")
 api.add_resource(GetInviteLimits, "/api/invites/limits")
 api.add_resource(DownloadMod, "/api/download/<string:mod_name>")
+api.add_resource(AdminDeleteMultipleInvites, "/api/admin/invites/delete")
+api.add_resource(AdminGetAllKeys, "/api/admin/keys")
+api.add_resource(AdminRevokeKey, "/api/admin/keys/<int:key_id>/revoke")
 
 # Основной маршрут для одностраничного приложения
 @app.route('/', defaults={'path': ''})

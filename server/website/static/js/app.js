@@ -96,6 +96,21 @@ const api = {
         return api.request(`/admin/invites/${inviteId}/delete`, 'POST');
     },
     
+    // Удаление нескольких инвайтов (для админов)
+    deleteMultipleInvites: (inviteIds) => {
+        return api.request('/admin/invites/delete', 'POST', { invite_ids: inviteIds });
+    },
+    
+    // Получение всех ключей (для админов)
+    getAllKeys: () => {
+        return api.request('/admin/keys');
+    },
+    
+    // Отзыв ключа (для админов)
+    revokeKey: (keyId) => {
+        return api.request(`/admin/keys/${keyId}/revoke`, 'POST');
+    },
+    
     // Установка лимитов инвайтов (для админов)
     setInviteLimits: (adminLimit, supportLimit, userLimit) => {
         return api.request('/admin/invites/limits', 'POST', {
@@ -359,6 +374,7 @@ async function loadInvites() {
     document.getElementById('invites-list').style.display = 'none';
     document.getElementById('invite-limits').style.display = 'none';
     document.getElementById('admin-invite-limits').style.display = 'none';
+    document.getElementById('delete-selected-invites-button').style.display = 'none';
     
     try {
         // Загрузка инвайтов и лимитов одновременно
@@ -382,6 +398,7 @@ async function loadInvites() {
             document.getElementById('user-limit-value').value = limitsData.global_limits.user;
             document.getElementById('admin-invite-limits').style.display = 'block';
             document.getElementById('invites-actions-header').style.display = 'table-cell';
+            document.getElementById('delete-selected-invites-button').style.display = 'inline-block';
         } else {
             document.getElementById('invites-actions-header').style.display = 'none';
         }
@@ -397,8 +414,18 @@ async function loadInvites() {
                 const row = document.createElement('tr');
                 const status = invite.used ? 'Использован' : 'Активен';
                 
+                // Добавляем чекбокс для выбора
+                const checkboxCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'invite-checkbox';
+                checkbox.dataset.inviteId = invite.id;
+                checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+                
                 // Добавляем информацию об инвайте
-                row.innerHTML = `
+                row.innerHTML += `
                     <td>${invite.code}</td>
                     <td>${utils.formatDate(invite.created_at)}</td>
                     <td>${utils.formatDate(invite.expires_at)}</td>
@@ -431,6 +458,42 @@ async function loadInvites() {
             });
             
             document.getElementById('invites-list').style.display = 'block';
+            
+            // Настройка обработчика для кнопки "Выбрать все"
+            const selectAllCheckbox = document.getElementById('select-all-invites');
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.addEventListener('change', () => {
+                document.querySelectorAll('.invite-checkbox:not([disabled])').forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            });
+            
+            // Настройка обработчика для кнопки "Удалить выбранные"
+            document.getElementById('delete-selected-invites-button').addEventListener('click', async () => {
+                const selectedInvites = Array.from(document.querySelectorAll('.invite-checkbox:checked'))
+                    .map(checkbox => parseInt(checkbox.dataset.inviteId));
+                
+                if (selectedInvites.length === 0) {
+                    alert('Выберите инвайты для удаления');
+                    return;
+                }
+                
+                if (confirm(`Вы уверены, что хотите удалить ${selectedInvites.length} инвайтов?`)) {
+                    try {
+                        const button = document.getElementById('delete-selected-invites-button');
+                        button.disabled = true;
+                        button.textContent = 'Удаление...';
+                        
+                        await api.deleteMultipleInvites(selectedInvites);
+                        loadInvites(); // Перезагрузка списка после удаления
+                    } catch (error) {
+                        alert(`Ошибка при удалении инвайтов: ${error.message}`);
+                        const button = document.getElementById('delete-selected-invites-button');
+                        button.disabled = false;
+                        button.textContent = 'Удалить выбранные';
+                    }
+                }
+            });
         }
     } catch (error) {
         console.error('Ошибка при загрузке инвайтов:', error);
@@ -531,6 +594,10 @@ async function loadAdminData() {
         addRoleManagementButtons();
         
         document.getElementById('users-list').style.display = 'block';
+        
+        // Обработчики переключения вкладок
+        document.querySelector('#all-keys-tab').addEventListener('click', loadAllKeys);
+        
     } catch (error) {
         console.error('Ошибка при загрузке списка пользователей:', error);
     } finally {
@@ -591,6 +658,70 @@ function addRoleManagementButtons() {
         container.appendChild(makeSupportBtn);
         container.appendChild(makeUserBtn);
     });
+}
+
+// Загрузка всех ключей (для админов)
+async function loadAllKeys() {
+    document.getElementById('all-keys-loading').style.display = 'block';
+    document.getElementById('all-keys-list').style.display = 'none';
+    
+    try {
+        const keysData = await api.getAllKeys();
+        const keys = keysData.keys;
+        
+        const tableBody = document.getElementById('all-keys-table-body');
+        tableBody.innerHTML = '';
+        
+        keys.forEach(key => {
+            const row = document.createElement('tr');
+            const isActive = key.is_active ? 'Активен' : 'Отозван';
+            const status = key.is_active ? (key.time_left > 0 ? 'Активен' : 'Истёк') : 'Отозван';
+            
+            row.innerHTML = `
+                <td>${key.id}</td>
+                <td>${key.key}</td>
+                <td>${utils.formatDate(key.created_at)}</td>
+                <td>${utils.formatDate(key.expires_at)}</td>
+                <td>${utils.formatTimeLeft(key.time_left)}</td>
+                <td>${key.user ? key.user.username : 'Не привязан'}</td>
+                <td>${status}</td>
+                <td>
+                    ${key.is_active ? 
+                        `<button class="btn btn-danger btn-sm revoke-key-btn" data-id="${key.id}">Отозвать</button>` : 
+                        'Отозван'
+                    }
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+        
+        // Добавляем обработчики для кнопок отзыва ключей
+        document.querySelectorAll('.revoke-key-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const keyId = button.getAttribute('data-id');
+                if (confirm('Вы уверены, что хотите отозвать этот ключ?')) {
+                    try {
+                        button.disabled = true;
+                        button.textContent = 'Отзыв...';
+                        
+                        await api.revokeKey(keyId);
+                        loadAllKeys(); // Перезагрузка списка после отзыва
+                    } catch (error) {
+                        alert(`Ошибка при отзыве ключа: ${error.message}`);
+                        button.disabled = false;
+                        button.textContent = 'Отозвать';
+                    }
+                }
+            });
+        });
+        
+        document.getElementById('all-keys-list').style.display = 'block';
+    } catch (error) {
+        console.error('Ошибка при загрузке ключей:', error);
+    } finally {
+        document.getElementById('all-keys-loading').style.display = 'none';
+    }
 }
 
 // Инициализация приложения
