@@ -1,6 +1,6 @@
 import os
 import sys
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, String, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -24,31 +24,59 @@ DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NA
 # Подключение к базе данных
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
-session = SessionLocal()
+
+def check_column_exists(session, table, column):
+    """Проверяет существование колонки в таблице"""
+    try:
+        # Используем text() для создания SQL запроса
+        sql = text(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{table}' AND column_name='{column}')")
+        result = session.execute(sql).scalar()
+        return result
+    except Exception as e:
+        print(f"Ошибка при проверке колонки {column}: {e}")
+        session.rollback()
+        return False
 
 def add_user_login_tracking():
     """Добавляет поля last_login и last_ip в таблицу users"""
     print("Добавление полей для отслеживания входов пользователей...")
     
+    # Для каждой операции создаем новую сессию
+    session = SessionLocal()
     try:
         # Проверка существования колонки last_login
-        session.execute("SELECT last_login FROM users LIMIT 1")
-        print("Поле last_login уже существует")
-    except Exception:
-        # Добавление колонки last_login
-        session.execute("ALTER TABLE users ADD COLUMN last_login TIMESTAMP")
-        print("Поле last_login успешно добавлено")
+        has_last_login = check_column_exists(session, 'users', 'last_login')
+        if has_last_login:
+            print("Поле last_login уже существует")
+        else:
+            # Добавление колонки last_login
+            session.execute(text("ALTER TABLE users ADD COLUMN last_login TIMESTAMP"))
+            session.commit()
+            print("Поле last_login успешно добавлено")
+    except Exception as e:
+        print(f"Ошибка при добавлении поля last_login: {e}")
+        session.rollback()
+    finally:
+        session.close()
     
+    # Для второй операции создаем новую сессию
+    session = SessionLocal()
     try:
         # Проверка существования колонки last_ip
-        session.execute("SELECT last_ip FROM users LIMIT 1")
-        print("Поле last_ip уже существует")
-    except Exception:
-        # Добавление колонки last_ip
-        session.execute("ALTER TABLE users ADD COLUMN last_ip VARCHAR(45)")
-        print("Поле last_ip успешно добавлено")
+        has_last_ip = check_column_exists(session, 'users', 'last_ip')
+        if has_last_ip:
+            print("Поле last_ip уже существует")
+        else:
+            # Добавление колонки last_ip
+            session.execute(text("ALTER TABLE users ADD COLUMN last_ip VARCHAR(45)"))
+            session.commit()
+            print("Поле last_ip успешно добавлено")
+    except Exception as e:
+        print(f"Ошибка при добавлении поля last_ip: {e}")
+        session.rollback()
+    finally:
+        session.close()
     
-    session.commit()
     print("Обновление структуры таблицы users завершено")
 
 def main():
@@ -58,9 +86,6 @@ def main():
         print("Обновление базы данных завершено успешно")
     except Exception as e:
         print(f"Ошибка при обновлении базы данных: {e}")
-        session.rollback()
-    finally:
-        session.close()
 
 if __name__ == "__main__":
     main() 
