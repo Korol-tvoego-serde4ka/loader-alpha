@@ -1437,7 +1437,7 @@ const i18n = {
     translations: {
         'ru': {
             // Общие
-            'app_name': 'Minecraft Loader Alpha',
+            'app_name': 'ZalypaSPB',
             'login': 'Вход',
             'register': 'Регистрация',
             'logout': 'Выход',
@@ -1548,7 +1548,7 @@ const i18n = {
         },
         'en': {
             // General
-            'app_name': 'Minecraft Loader Alpha',
+            'app_name': 'ZalypaSPB',
             'login': 'Login',
             'register': 'Register',
             'logout': 'Logout',

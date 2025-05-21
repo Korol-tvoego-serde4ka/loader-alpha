@@ -235,7 +235,7 @@ class LoaderWindow(QMainWindow):
         super().__init__()
         
         # Настройка окна
-        self.setWindowTitle(f"Minecraft Loader Alpha v{VERSION}")
+        self.setWindowTitle(f"ZalypaSPB v{VERSION}")
         self.setMinimumSize(800, 600)
         self.setWindowIcon(QIcon("assets/icon.ico"))
         
@@ -270,7 +270,7 @@ class LoaderWindow(QMainWindow):
     
     def create_ui(self):
         # Заголовок
-        header_label = QLabel("Minecraft Loader Alpha")
+        header_label = QLabel("ZalypaSPB")
         header_label.setAlignment(Qt.AlignCenter)
         header_label.setStyleSheet("font-size: 24px; font-weight: bold; margin: 20px;")
         self.main_layout.addWidget(header_label)
