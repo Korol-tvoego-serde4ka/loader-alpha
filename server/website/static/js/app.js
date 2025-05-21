@@ -501,31 +501,41 @@ const auth = {
             userData = await api.getUserInfo();
             
             // Отображение имени пользователя
-            document.getElementById('username-display').textContent = userData.username;
+            const usernameDisplay = document.getElementById('username-display');
+            if (usernameDisplay) usernameDisplay.textContent = userData.username;
             
             // Отображение элементов для авторизованных пользователей
-            document.getElementById('login-buttons').style.display = 'none';
-            document.getElementById('user-info').style.display = 'flex';
-            document.getElementById('home-buttons').style.display = 'none';
-            document.getElementById('download-button').style.display = 'block';
+            const loginButtons = document.getElementById('login-buttons');
+            const userInfo = document.getElementById('user-info');
+            const homeButtons = document.getElementById('home-buttons');
+            const downloadButton = document.getElementById('download-button');
+            
+            if (loginButtons) loginButtons.style.display = 'none';
+            if (userInfo) userInfo.style.display = 'flex';
+            if (homeButtons) homeButtons.style.display = 'none';
+            if (downloadButton) downloadButton.style.display = 'block';
             
             // Отображение админ-панели для админов и саппорта
+            const navAdmin = document.getElementById('nav-admin');
+            const adminCommands = document.getElementById('admin-commands');
+            
             if (userData.is_admin || userData.is_support) {
-                document.getElementById('nav-admin').style.display = 'block';
+                if (navAdmin) navAdmin.style.display = 'block';
                 document.querySelectorAll('.admin-command').forEach(el => {
-                    el.style.display = 'table-row';
+                    if (el) el.style.display = 'table-row';
                 });
-                document.getElementById('admin-commands').style.display = 'table-row';
+                if (adminCommands) adminCommands.style.display = 'table-row';
             } else {
-                document.getElementById('nav-admin').style.display = 'none';
+                if (navAdmin) navAdmin.style.display = 'none';
                 document.querySelectorAll('.admin-command').forEach(el => {
-                    el.style.display = 'none';
+                    if (el) el.style.display = 'none';
                 });
-                document.getElementById('admin-commands').style.display = 'none';
+                if (adminCommands) adminCommands.style.display = 'none';
             }
             
             return true;
         } catch (error) {
+            console.error('Error during auth check:', error);
             auth.logout();
             return false;
         }
@@ -537,15 +547,25 @@ const auth = {
         userData = null;
         localStorage.removeItem('token');
         
-        // Скрытие элементов для авторизованных пользователей
-        document.getElementById('login-buttons').style.display = 'flex';
-        document.getElementById('user-info').style.display = 'none';
-        document.getElementById('home-buttons').style.display = 'block';
-        document.getElementById('download-button').style.display = 'none';
-        document.getElementById('nav-admin').style.display = 'none';
-        
-        // Переход на главную страницу
-        navigation.navigateTo('home');
+        try {
+            // Скрытие элементов для авторизованных пользователей
+            const loginButtons = document.getElementById('login-buttons');
+            const userInfo = document.getElementById('user-info');
+            const homeButtons = document.getElementById('home-buttons');
+            const downloadButton = document.getElementById('download-button');
+            const navAdmin = document.getElementById('nav-admin');
+            
+            if (loginButtons) loginButtons.style.display = 'flex';
+            if (userInfo) userInfo.style.display = 'none';
+            if (homeButtons) homeButtons.style.display = 'block';
+            if (downloadButton) downloadButton.style.display = 'none';
+            if (navAdmin) navAdmin.style.display = 'none';
+            
+            // Переход на главную страницу
+            navigation.navigateTo('home');
+        } catch (error) {
+            console.error('Error during logout:', error);
+        }
     }
 };
 
@@ -553,258 +573,294 @@ const auth = {
 
 // Загрузка ключей пользователя
 async function loadKeys() {
-    document.getElementById('keys-loading').style.display = 'block';
-    document.getElementById('no-keys').style.display = 'none';
-    document.getElementById('keys-list').style.display = 'none';
-    
     try {
-        let keysData;
+        const keysLoading = document.getElementById('keys-loading');
+        const noKeys = document.getElementById('no-keys');
+        const keysList = document.getElementById('keys-list');
         
-        // Используем кэш, если он актуален
-        if (dataCache.isCacheValid('keys')) {
-            keysData = { keys: dataCache.keys };
-        } else {
-            keysData = await api.getKeys();
-            dataCache.updateCache('keys', keysData.keys);
-        }
+        if (keysLoading) keysLoading.style.display = 'block';
+        if (noKeys) noKeys.style.display = 'none';
+        if (keysList) keysList.style.display = 'none';
         
-        const keys = keysData.keys.filter(key => key.is_active);
-        
-        if (keys.length === 0) {
-            document.getElementById('no-keys').style.display = 'block';
-        } else {
-            const tableBody = document.getElementById('keys-table-body');
-            tableBody.innerHTML = '';
+        try {
+            let keysData;
             
-            // Фильтрация по поисковому запросу
-            const searchQuery = document.getElementById('keys-search')?.value?.toLowerCase() || '';
-            let filteredKeys = keys;
-            
-            if (searchQuery) {
-                filteredKeys = keys.filter(key => key.key.toLowerCase().includes(searchQuery));
+            // Используем кэш, если он актуален
+            if (dataCache.isCacheValid('keys')) {
+                keysData = { keys: dataCache.keys };
+            } else {
+                keysData = await api.getKeys();
+                dataCache.updateCache('keys', keysData.keys);
             }
             
-            // Получаем данные только для текущей страницы
-            const pageKeys = pagination.getPageData('keys', filteredKeys);
+            const keys = keysData.keys.filter(key => key.is_active);
             
-            pageKeys.forEach(key => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${key.key}</td>
-                    <td>${utils.formatDate(key.created_at)}</td>
-                    <td>${utils.formatDate(key.expires_at)}</td>
-                    <td>${utils.formatTimeLeft(key.time_left)}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-            
-            // Добавляем пагинацию
-            const paginationContainer = document.getElementById('keys-pagination');
-            if (paginationContainer) {
-                paginationContainer.innerHTML = pagination.generatePaginationHTML('keys', filteredKeys.length);
+            if (keys.length === 0) {
+                if (noKeys) noKeys.style.display = 'block';
+            } else {
+                const tableBody = document.getElementById('keys-table-body');
+                if (tableBody) tableBody.innerHTML = '';
                 
-                // Добавляем обработчики для кнопок пагинации
-                document.querySelectorAll('.pagination-link[data-type="keys"]').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const type = this.getAttribute('data-type');
-                        const page = parseInt(this.getAttribute('data-page'));
-                        pagination.goToPage(type, page);
-                        loadKeys(); // Перезагружаем с новой страницей
+                // Фильтрация по поисковому запросу
+                const searchQuery = document.getElementById('keys-search')?.value?.toLowerCase() || '';
+                let filteredKeys = keys;
+                
+                if (searchQuery) {
+                    filteredKeys = keys.filter(key => key.key.toLowerCase().includes(searchQuery));
+                }
+                
+                // Получаем данные только для текущей страницы
+                const pageKeys = pagination.getPageData('keys', filteredKeys);
+                
+                if (tableBody) {
+                    pageKeys.forEach(key => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${key.key}</td>
+                            <td>${utils.formatDate(key.created_at)}</td>
+                            <td>${utils.formatDate(key.expires_at)}</td>
+                            <td>${utils.formatTimeLeft(key.time_left)}</td>
+                        `;
+                        tableBody.appendChild(row);
                     });
-                });
+                }
+                
+                // Добавляем пагинацию
+                const paginationContainer = document.getElementById('keys-pagination');
+                if (paginationContainer) {
+                    paginationContainer.innerHTML = pagination.generatePaginationHTML('keys', filteredKeys.length);
+                    
+                    // Добавляем обработчики для кнопок пагинации
+                    document.querySelectorAll('.pagination-link[data-type="keys"]').forEach(link => {
+                        link.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const type = this.getAttribute('data-type');
+                            const page = parseInt(this.getAttribute('data-page'));
+                            pagination.goToPage(type, page);
+                            loadKeys(); // Перезагружаем с новой страницей
+                        });
+                    });
+                }
+                
+                if (keysList) keysList.style.display = 'block';
             }
-            
-            document.getElementById('keys-list').style.display = 'block';
+        } catch (error) {
+            console.error('Ошибка при загрузке ключей:', error);
+        } finally {
+            if (keysLoading) keysLoading.style.display = 'none';
         }
     } catch (error) {
-        console.error('Ошибка при загрузке ключей:', error);
-    } finally {
-        document.getElementById('keys-loading').style.display = 'none';
+        console.error('Fatal error in loadKeys function:', error);
     }
 }
 
 // Загрузка инвайтов пользователя
 async function loadInvites() {
-    document.getElementById('invites-loading').style.display = 'block';
-    document.getElementById('no-invites').style.display = 'none';
-    document.getElementById('invites-list').style.display = 'none';
-    document.getElementById('invite-limits').style.display = 'none';
-    document.getElementById('admin-invite-limits').style.display = 'none';
-    document.getElementById('delete-selected-invites-button').style.display = 'none';
-    
     try {
-        // Загрузка инвайтов и лимитов одновременно
-        let invitesData, limitsData;
+        const invitesLoading = document.getElementById('invites-loading');
+        const noInvites = document.getElementById('no-invites');
+        const invitesList = document.getElementById('invites-list');
+        const inviteLimits = document.getElementById('invite-limits');
+        const adminInviteLimits = document.getElementById('admin-invite-limits');
+        const deleteSelectedInvitesButton = document.getElementById('delete-selected-invites-button');
         
-        if (dataCache.isCacheValid('invites')) {
-            invitesData = { invites: dataCache.invites };
-            limitsData = dataCache.inviteLimits;
-        } else {
-            [invitesData, limitsData] = await Promise.all([
-            api.getInvites(),
-            api.getInviteLimits()
-        ]);
+        if (invitesLoading) invitesLoading.style.display = 'block';
+        if (noInvites) noInvites.style.display = 'none';
+        if (invitesList) invitesList.style.display = 'none';
+        if (inviteLimits) inviteLimits.style.display = 'none';
+        if (adminInviteLimits) adminInviteLimits.style.display = 'none';
+        if (deleteSelectedInvitesButton) deleteSelectedInvitesButton.style.display = 'none';
+        
+        try {
+            // Загрузка инвайтов и лимитов одновременно
+            let invitesData, limitsData;
             
-            dataCache.updateCache('invites', invitesData.invites);
-            dataCache.updateCache('inviteLimits', limitsData);
-        }
-        
-        const invites = invitesData.invites;
-        
-        // Отображение информации о лимитах
-        document.getElementById('monthly-limit').textContent = limitsData.monthly_limit;
-        document.getElementById('used-invites').textContent = limitsData.used_invites;
-        document.getElementById('remaining-invites').textContent = limitsData.remaining_invites;
-        document.getElementById('invite-limits').style.display = 'block';
-        
-        // Отображение панели управления лимитами для админов
-        if (userData && userData.is_admin) {
-            document.getElementById('admin-limit-value').value = limitsData.global_limits.admin;
-            document.getElementById('support-limit-value').value = limitsData.global_limits.support;
-            document.getElementById('user-limit-value').value = limitsData.global_limits.user;
-            document.getElementById('admin-invite-limits').style.display = 'block';
-            document.getElementById('invites-actions-header').style.display = 'table-cell';
-            document.getElementById('delete-selected-invites-button').style.display = 'inline-block';
-        } else {
-            document.getElementById('invites-actions-header').style.display = 'none';
-        }
-        
-        // Проверка, есть ли инвайты для отображения
-        if (invites.length === 0) {
-            document.getElementById('no-invites').style.display = 'block';
-        } else {
-            // Фильтрация по поисковому запросу
-            const searchQuery = document.getElementById('invites-search')?.value?.toLowerCase() || '';
-            let filteredInvites = invites;
-            
-            if (searchQuery) {
-                filteredInvites = invites.filter(invite => 
-                    invite.code.toLowerCase().includes(searchQuery) || 
-                    invite.created_by.username.toLowerCase().includes(searchQuery) ||
-                    (invite.used_by && invite.used_by.toLowerCase().includes(searchQuery))
-                );
+            if (dataCache.isCacheValid('invites')) {
+                invitesData = { invites: dataCache.invites };
+                limitsData = dataCache.inviteLimits;
+            } else {
+                [invitesData, limitsData] = await Promise.all([
+                api.getInvites(),
+                api.getInviteLimits()
+            ]);
+                
+                dataCache.updateCache('invites', invitesData.invites);
+                dataCache.updateCache('inviteLimits', limitsData);
             }
             
-            // Получаем данные только для текущей страницы
-            const pageInvites = pagination.getPageData('invites', filteredInvites);
+            const invites = invitesData.invites;
             
-            const tableBody = document.getElementById('invites-table-body');
-            tableBody.innerHTML = '';
+            // Отображение информации о лимитах
+            const monthlyLimit = document.getElementById('monthly-limit');
+            const usedInvites = document.getElementById('used-invites');
+            const remainingInvites = document.getElementById('remaining-invites');
             
-            pageInvites.forEach(invite => {
-                const row = document.createElement('tr');
-                const status = invite.used ? 'Использован' : 'Активен';
+            if (monthlyLimit) monthlyLimit.textContent = limitsData.monthly_limit;
+            if (usedInvites) usedInvites.textContent = limitsData.used_invites;
+            if (remainingInvites) remainingInvites.textContent = limitsData.remaining_invites;
+            if (inviteLimits) inviteLimits.style.display = 'block';
+            
+            // Отображение панели управления лимитами для админов
+            if (userData && userData.is_admin) {
+                const adminLimitValue = document.getElementById('admin-limit-value');
+                const supportLimitValue = document.getElementById('support-limit-value');
+                const userLimitValue = document.getElementById('user-limit-value');
+                const invitesActionsHeader = document.getElementById('invites-actions-header');
                 
-                // Добавляем чекбокс для выбора
-                const checkboxCell = document.createElement('td');
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'invite-checkbox';
-                checkbox.dataset.inviteId = invite.id;
-                checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
-                checkboxCell.appendChild(checkbox);
-                row.appendChild(checkboxCell);
+                if (adminLimitValue) adminLimitValue.value = limitsData.global_limits.admin;
+                if (supportLimitValue) supportLimitValue.value = limitsData.global_limits.support;
+                if (userLimitValue) userLimitValue.value = limitsData.global_limits.user;
+                if (adminInviteLimits) adminInviteLimits.style.display = 'block';
+                if (invitesActionsHeader) invitesActionsHeader.style.display = 'table-cell';
+                if (deleteSelectedInvitesButton) deleteSelectedInvitesButton.style.display = 'inline-block';
+            } else {
+                const invitesActionsHeader = document.getElementById('invites-actions-header');
+                if (invitesActionsHeader) invitesActionsHeader.style.display = 'none';
+            }
+            
+            // Проверка, есть ли инвайты для отображения
+            if (invites.length === 0) {
+                if (noInvites) noInvites.style.display = 'block';
+            } else {
+                // Фильтрация по поисковому запросу
+                const searchQuery = document.getElementById('invites-search')?.value?.toLowerCase() || '';
+                let filteredInvites = invites;
                 
-                // Добавляем информацию об инвайте
-                row.innerHTML += `
-                    <td>${invite.code}</td>
-                    <td>${utils.formatDate(invite.created_at)}</td>
-                    <td>${utils.formatDate(invite.expires_at)}</td>
-                    <td>${status}</td>
-                    <td>${invite.created_by.username}</td>
-                    <td>${invite.used_by ? invite.used_by : 'Не использован'}</td>
-                `;
+                if (searchQuery) {
+                    filteredInvites = invites.filter(invite => 
+                        invite.code.toLowerCase().includes(searchQuery) || 
+                        invite.created_by.username.toLowerCase().includes(searchQuery) ||
+                        (invite.used_by && invite.used_by.toLowerCase().includes(searchQuery))
+                    );
+                }
                 
-                // Добавляем кнопку удаления для админов
-                if (userData && userData.is_admin) {
-                    const actionCell = document.createElement('td');
-                    const deleteButton = document.createElement('button');
-                    deleteButton.className = 'btn btn-danger btn-sm';
-                    deleteButton.textContent = 'Удалить';
-                    deleteButton.addEventListener('click', async () => {
-                        if (confirm('Вы уверены, что хотите удалить этот инвайт?')) {
+                // Получаем данные только для текущей страницы
+                const pageInvites = pagination.getPageData('invites', filteredInvites);
+                
+                const tableBody = document.getElementById('invites-table-body');
+                if (tableBody) tableBody.innerHTML = '';
+                
+                if (tableBody) {
+                    pageInvites.forEach(invite => {
+                        const row = document.createElement('tr');
+                        const status = invite.used ? 'Использован' : 'Активен';
+                        
+                        // Добавляем чекбокс для выбора
+                        const checkboxCell = document.createElement('td');
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'invite-checkbox';
+                        checkbox.dataset.inviteId = invite.id;
+                        checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
+                        checkboxCell.appendChild(checkbox);
+                        row.appendChild(checkboxCell);
+                        
+                        // Добавляем информацию об инвайте
+                        row.innerHTML += `
+                            <td>${invite.code}</td>
+                            <td>${utils.formatDate(invite.created_at)}</td>
+                            <td>${utils.formatDate(invite.expires_at)}</td>
+                            <td>${status}</td>
+                            <td>${invite.created_by.username}</td>
+                            <td>${invite.used_by ? invite.used_by : 'Не использован'}</td>
+                        `;
+                        
+                        // Добавляем кнопку удаления для админов
+                        if (userData && userData.is_admin) {
+                            const actionCell = document.createElement('td');
+                            const deleteButton = document.createElement('button');
+                            deleteButton.className = 'btn btn-danger btn-sm';
+                            deleteButton.textContent = 'Удалить';
+                            deleteButton.addEventListener('click', async () => {
+                                if (confirm('Вы уверены, что хотите удалить этот инвайт?')) {
+                                    try {
+                                        deleteButton.disabled = true;
+                                        deleteButton.textContent = 'Удаление...';
+                                        
+                                        await api.deleteInvite(invite.id);
+                                        dataCache.clearCache('invites'); // Очищаем кэш
+                                        loadInvites(); // Перезагрузка списка после удаления
+                                    } catch (error) {
+                                        alert(`Ошибка при удалении инвайта: ${error.message}`);
+                                        deleteButton.disabled = false;
+                                        deleteButton.textContent = 'Удалить';
+                                    }
+                                }
+                            });
+                            actionCell.appendChild(deleteButton);
+                            row.appendChild(actionCell);
+                        }
+                        
+                        tableBody.appendChild(row);
+                    });
+                }
+                
+                // Добавляем пагинацию
+                const paginationContainer = document.getElementById('invites-pagination');
+                if (paginationContainer) {
+                    paginationContainer.innerHTML = pagination.generatePaginationHTML('invites', filteredInvites.length);
+                    
+                    // Добавляем обработчики для кнопок пагинации
+                    document.querySelectorAll('.pagination-link[data-type="invites"]').forEach(link => {
+                        link.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const type = this.getAttribute('data-type');
+                            const page = parseInt(this.getAttribute('data-page'));
+                            pagination.goToPage(type, page);
+                            loadInvites(); // Перезагружаем с новой страницей
+                        });
+                    });
+                }
+                
+                if (invitesList) invitesList.style.display = 'block';
+                
+                // Настройка обработчика для кнопки "Выбрать все"
+                const selectAllCheckbox = document.getElementById('select-all-invites');
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.addEventListener('change', () => {
+                        document.querySelectorAll('.invite-checkbox:not([disabled])').forEach(checkbox => {
+                            checkbox.checked = selectAllCheckbox.checked;
+                        });
+                    });
+                }
+                
+                // Настройка обработчика для кнопки "Удалить выбранные"
+                const deleteSelectedButton = document.getElementById('delete-selected-invites-button');
+                if (deleteSelectedButton) {
+                    deleteSelectedButton.addEventListener('click', async () => {
+                        const selectedInvites = Array.from(document.querySelectorAll('.invite-checkbox:checked'))
+                            .map(checkbox => parseInt(checkbox.dataset.inviteId));
+                        
+                        if (selectedInvites.length === 0) {
+                            alert('Выберите инвайты для удаления');
+                            return;
+                        }
+                        
+                        if (confirm(`Вы уверены, что хотите удалить ${selectedInvites.length} инвайтов?`)) {
                             try {
-                                deleteButton.disabled = true;
-                                deleteButton.textContent = 'Удаление...';
+                                deleteSelectedButton.disabled = true;
+                                deleteSelectedButton.textContent = 'Удаление...';
                                 
-                                await api.deleteInvite(invite.id);
+                                await api.deleteMultipleInvites(selectedInvites);
                                 dataCache.clearCache('invites'); // Очищаем кэш
                                 loadInvites(); // Перезагрузка списка после удаления
                             } catch (error) {
-                                alert(`Ошибка при удалении инвайта: ${error.message}`);
-                                deleteButton.disabled = false;
-                                deleteButton.textContent = 'Удалить';
+                                alert(`Ошибка при удалении инвайтов: ${error.message}`);
+                                deleteSelectedButton.disabled = false;
+                                deleteSelectedButton.textContent = 'Удалить выбранные';
                             }
                         }
                     });
-                    actionCell.appendChild(deleteButton);
-                    row.appendChild(actionCell);
                 }
-                
-                tableBody.appendChild(row);
-            });
-            
-            // Добавляем пагинацию
-            const paginationContainer = document.getElementById('invites-pagination');
-            if (paginationContainer) {
-                paginationContainer.innerHTML = pagination.generatePaginationHTML('invites', filteredInvites.length);
-                
-                // Добавляем обработчики для кнопок пагинации
-                document.querySelectorAll('.pagination-link[data-type="invites"]').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const type = this.getAttribute('data-type');
-                        const page = parseInt(this.getAttribute('data-page'));
-                        pagination.goToPage(type, page);
-                        loadInvites(); // Перезагружаем с новой страницей
-                    });
-                });
             }
-            
-            document.getElementById('invites-list').style.display = 'block';
-            
-            // Настройка обработчика для кнопки "Выбрать все"
-            const selectAllCheckbox = document.getElementById('select-all-invites');
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.addEventListener('change', () => {
-                document.querySelectorAll('.invite-checkbox:not([disabled])').forEach(checkbox => {
-                    checkbox.checked = selectAllCheckbox.checked;
-                });
-            });
-            
-            // Настройка обработчика для кнопки "Удалить выбранные"
-            document.getElementById('delete-selected-invites-button').addEventListener('click', async () => {
-                const selectedInvites = Array.from(document.querySelectorAll('.invite-checkbox:checked'))
-                    .map(checkbox => parseInt(checkbox.dataset.inviteId));
-                
-                if (selectedInvites.length === 0) {
-                    alert('Выберите инвайты для удаления');
-                    return;
-                }
-                
-                if (confirm(`Вы уверены, что хотите удалить ${selectedInvites.length} инвайтов?`)) {
-                    try {
-                        const button = document.getElementById('delete-selected-invites-button');
-                        button.disabled = true;
-                        button.textContent = 'Удаление...';
-                        
-                        await api.deleteMultipleInvites(selectedInvites);
-                        dataCache.clearCache('invites'); // Очищаем кэш
-                        loadInvites(); // Перезагрузка списка после удаления
-                    } catch (error) {
-                        alert(`Ошибка при удалении инвайтов: ${error.message}`);
-                        const button = document.getElementById('delete-selected-invites-button');
-                        button.disabled = false;
-                        button.textContent = 'Удалить выбранные';
-                    }
-                }
-            });
+        } catch (error) {
+            console.error('Ошибка при загрузке инвайтов:', error);
+        } finally {
+            if (invitesLoading) invitesLoading.style.display = 'none';
         }
     } catch (error) {
-        console.error('Ошибка при загрузке инвайтов:', error);
-    } finally {
-        document.getElementById('invites-loading').style.display = 'none';
+        console.error('Fatal error in loadInvites function:', error);
     }
 }
 
