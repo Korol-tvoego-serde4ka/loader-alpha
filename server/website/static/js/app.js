@@ -568,13 +568,16 @@ async function loadAdminData() {
                 <td>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Никогда'}</td>
                 <td>${utils.formatIpAddress(user.last_ip)}</td>
                 <td>
-                    ${user.is_banned ? 
-                        `<button class="btn btn-success btn-sm unban-user" data-id="${user.id}">Разблокировать</button>` :
-                        `<button class="btn btn-danger btn-sm ban-user" data-id="${user.id}">Заблокировать</button>`
-                    }
-                    <div class="user-role-buttons mt-1" data-user-id="${user.id}"></div>
+                    <div class="action-buttons">
+                        ${user.is_banned ? 
+                            `<button class="btn btn-success btn-sm unban-user" data-id="${user.id}">Разбл</button>` :
+                            `<button class="btn btn-danger btn-sm ban-user" data-id="${user.id}">Блок</button>`
+                        }
+                        <div class="user-role-buttons d-inline-flex" data-user-id="${user.id}"></div>
+                    </div>
                 </td>
             `;
+            
             tableBody.appendChild(row);
         });
         
@@ -632,8 +635,11 @@ function addRoleManagementButtons() {
         
         // Добавляем кнопки управления ролями
         const makeAdminBtn = document.createElement('button');
-        makeAdminBtn.className = 'btn btn-primary btn-sm mr-1';
-        makeAdminBtn.textContent = 'Админ';
+        makeAdminBtn.className = 'btn btn-primary btn-sm ml-1';
+        makeAdminBtn.style.padding = '0.2rem 0.4rem';
+        makeAdminBtn.style.fontSize = '0.75rem';
+        makeAdminBtn.textContent = 'A';
+        makeAdminBtn.title = 'Сделать администратором';
         makeAdminBtn.addEventListener('click', async () => {
             try {
                 await api.setUserRole(userId, 'admin');
@@ -644,8 +650,11 @@ function addRoleManagementButtons() {
         });
         
         const makeSupportBtn = document.createElement('button');
-        makeSupportBtn.className = 'btn btn-info btn-sm mr-1';
-        makeSupportBtn.textContent = 'Саппорт';
+        makeSupportBtn.className = 'btn btn-info btn-sm ml-1';
+        makeSupportBtn.style.padding = '0.2rem 0.4rem';
+        makeSupportBtn.style.fontSize = '0.75rem';
+        makeSupportBtn.textContent = 'С';
+        makeSupportBtn.title = 'Сделать саппортом';
         makeSupportBtn.addEventListener('click', async () => {
             try {
                 await api.setUserRole(userId, 'support');
@@ -656,8 +665,11 @@ function addRoleManagementButtons() {
         });
         
         const makeUserBtn = document.createElement('button');
-        makeUserBtn.className = 'btn btn-secondary btn-sm';
-        makeUserBtn.textContent = 'Юзер';
+        makeUserBtn.className = 'btn btn-secondary btn-sm ml-1';
+        makeUserBtn.style.padding = '0.2rem 0.4rem';
+        makeUserBtn.style.fontSize = '0.75rem';
+        makeUserBtn.textContent = 'Ю';
+        makeUserBtn.title = 'Сделать обычным пользователем';
         makeUserBtn.addEventListener('click', async () => {
             try {
                 await api.setUserRole(userId, 'user');

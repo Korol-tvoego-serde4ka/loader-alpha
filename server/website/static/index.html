@@ -180,18 +180,20 @@
                         <p>У вас нет активных ключей.</p>
                     </div>
                     <div id="keys-list" style="display: none;">
-                        <table class="table table-dark">
-                            <thead>
-                                <tr>
-                                    <th>Ключ</th>
-                                    <th>Создан</th>
-                                    <th>Истекает</th>
-                                    <th>Осталось</th>
-                                </tr>
-                            </thead>
-                            <tbody id="keys-table-body">
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>Ключ</th>
+                                        <th>Создан</th>
+                                        <th>Истекает</th>
+                                        <th>Осталось</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="keys-table-body">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -273,22 +275,24 @@
                         <p>У вас нет приглашений.</p>
                     </div>
                     <div id="invites-list" style="display: none;">
-                        <table class="table table-dark">
-                            <thead>
-                                <tr>
-                                    <th><input type="checkbox" id="select-all-invites" title="Выбрать все"></th>
-                                    <th>Код</th>
-                                    <th>Создан</th>
-                                    <th>Истекает</th>
-                                    <th>Статус</th>
-                                    <th>Создатель</th>
-                                    <th>Использован</th>
-                                    <th id="invites-actions-header" style="display: none;">Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="invites-table-body">
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-compact">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="select-all-invites" title="Выбрать все"></th>
+                                        <th>Код</th>
+                                        <th>Создан</th>
+                                        <th>Истекает</th>
+                                        <th>Статус</th>
+                                        <th>Создатель</th>
+                                        <th>Использован</th>
+                                        <th id="invites-actions-header" style="display: none;">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invites-table-body">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <div class="card-footer">
@@ -343,47 +347,49 @@
                     <h4>Команды бота</h4>
                 </div>
                 <div class="card-body">
-                    <table class="table table-dark">
-                        <thead>
-                            <tr>
-                                <th>Команда</th>
-                                <th>Описание</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>/code &lt;код&gt;</code></td>
-                                <td>Привязка аккаунта сайта к Discord</td>
-                            </tr>
-                            <tr>
-                                <td><code>/redeem &lt;ключ&gt;</code></td>
-                                <td>Активация ключа</td>
-                            </tr>
-                            <tr>
-                                <td><code>/status</code></td>
-                                <td>Проверка статуса подписки</td>
-                            </tr>
-                            <tr id="admin-commands" style="display: none;">
-                                <td colspan="2"><strong>Команды для администраторов и саппорта:</strong></td>
-                            </tr>
-                            <tr class="admin-command" style="display: none;">
-                                <td><code>/genkey [продолжительность]</code></td>
-                                <td>Генерация ключа</td>
-                            </tr>
-                            <tr class="admin-command" style="display: none;">
-                                <td><code>/ban &lt;имя_пользователя&gt;</code></td>
-                                <td>Бан пользователя</td>
-                            </tr>
-                            <tr class="admin-command" style="display: none;">
-                                <td><code>/unban &lt;имя_пользователя&gt;</code></td>
-                                <td>Разбан пользователя</td>
-                            </tr>
-                            <tr class="admin-command" style="display: none;">
-                                <td><code>/user &lt;имя_пользователя&gt;</code></td>
-                                <td>Информация о пользователе</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-compact">
+                            <thead>
+                                <tr>
+                                    <th>Команда</th>
+                                    <th>Описание</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/code &lt;код&gt;</code></td>
+                                    <td>Привязка аккаунта сайта к Discord</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/redeem &lt;ключ&gt;</code></td>
+                                    <td>Активация ключа</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/status</code></td>
+                                    <td>Проверка статуса подписки</td>
+                                </tr>
+                                <tr id="admin-commands" style="display: none;">
+                                    <td colspan="2"><strong>Команды для администраторов и саппорта:</strong></td>
+                                </tr>
+                                <tr class="admin-command" style="display: none;">
+                                    <td><code>/genkey [продолжительность]</code></td>
+                                    <td>Генерация ключа</td>
+                                </tr>
+                                <tr class="admin-command" style="display: none;">
+                                    <td><code>/ban &lt;имя_пользователя&gt;</code></td>
+                                    <td>Бан пользователя</td>
+                                </tr>
+                                <tr class="admin-command" style="display: none;">
+                                    <td><code>/unban &lt;имя_пользователя&gt;</code></td>
+                                    <td>Разбан пользователя</td>
+                                </tr>
+                                <tr class="admin-command" style="display: none;">
+                                    <td><code>/user &lt;имя_пользователя&gt;</code></td>
+                                    <td>Информация о пользователе</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -420,23 +426,25 @@
                                 </div>
                             </div>
                             <div id="users-list" style="display: none;">
-                                <table class="table table-dark">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Имя пользователя</th>
-                                            <th>Email</th>
-                                            <th>Роль</th>
-                                            <th>Discord</th>
-                                            <th>Статус</th>
-                                            <th>Последний вход</th>
-                                            <th>IP-адрес</th>
-                                            <th>Действия</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="users-table-body">
-                                    </tbody>
-                                </table>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-compact">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Имя пользователя</th>
+                                                <th>Email</th>
+                                                <th>Роль</th>
+                                                <th>Discord</th>
+                                                <th>Статус</th>
+                                                <th>Последний вход</th>
+                                                <th>IP-адрес</th>
+                                                <th>Действия</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="users-table-body">
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -485,27 +493,29 @@
                             </div>
                             <div id="all-keys-list" style="display: none;">
                                 <div class="mb-3">
-                                    <button id="revoke-selected-keys-button" class="btn btn-danger">Отозвать выбранные</button>
-                                    <button id="restore-selected-keys-button" class="btn btn-success ml-2">Восстановить выбранные</button>
-                                    <button id="delete-selected-keys-button" class="btn btn-dark ml-2">Удалить выбранные</button>
+                                    <button id="revoke-selected-keys-button" class="btn btn-danger btn-sm">Отозвать выбранные</button>
+                                    <button id="restore-selected-keys-button" class="btn btn-success btn-sm ml-2">Восстановить выбранные</button>
+                                    <button id="delete-selected-keys-button" class="btn btn-dark btn-sm ml-2">Удалить выбранные</button>
                                 </div>
-                                <table class="table table-dark">
-                                    <thead>
-                                        <tr>
-                                            <th><input type="checkbox" id="select-all-keys" title="Выбрать все"></th>
-                                            <th>ID</th>
-                                            <th>Ключ</th>
-                                            <th>Создан</th>
-                                            <th>Истекает</th>
-                                            <th>Остаток времени</th>
-                                            <th>Владелец</th>
-                                            <th>Статус</th>
-                                            <th>Действия</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="all-keys-table-body">
-                                    </tbody>
-                                </table>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-compact">
+                                        <thead>
+                                            <tr>
+                                                <th><input type="checkbox" id="select-all-keys" title="Выбрать все"></th>
+                                                <th>ID</th>
+                                                <th>Ключ</th>
+                                                <th>Создан</th>
+                                                <th>Истекает</th>
+                                                <th>Остаток времени</th>
+                                                <th>Владелец</th>
+                                                <th>Статус</th>
+                                                <th>Действия</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="all-keys-table-body">
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>

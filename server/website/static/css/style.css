@@ -79,6 +79,39 @@ body {
     vertical-align: middle;
 }
 
+/* Компактные таблицы */
+.table-compact {
+    font-size: 0.85rem;
+}
+
+.table-compact th,
+.table-compact td {
+    padding: 0.4rem 0.5rem;
+}
+
+.table-compact .btn-sm {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+}
+
+.table-compact .form-control {
+    height: calc(1.5em + 0.5rem + 2px);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
+.table-responsive {
+    margin-bottom: 0;
+}
+
+/* Улучшенный стиль для кнопок управления в таблицах */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
 /* Формы */
 .form-control {
     background-color: #343a40;
