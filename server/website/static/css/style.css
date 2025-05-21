@@ -1,0 +1,189 @@
+/* Основные стили */
+body {
+    background-color: #1a1a1a;
+    color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.jumbotron {
+    border-radius: 0.5rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    margin-bottom: 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    font-weight: 600;
+}
+
+.btn {
+    border-radius: 0.25rem;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0069d9;
+    border-color: #0062cc;
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+/* Таблицы */
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    border-top: none;
+    border-bottom: 2px solid #6c757d;
+    font-weight: 600;
+}
+
+.table td {
+    border-color: #454d55;
+    vertical-align: middle;
+}
+
+/* Формы */
+.form-control {
+    background-color: #343a40;
+    border-color: #495057;
+    color: #fff;
+}
+
+.form-control:focus {
+    background-color: #454d55;
+    border-color: #80bdff;
+    color: #fff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Уведомления */
+.alert {
+    border-radius: 0.25rem;
+    padding: 0.75rem 1.25rem;
+}
+
+/* Стили для пользовательского интерфейса */
+#username-display {
+    font-weight: bold;
+}
+
+#discord-code {
+    font-family: monospace;
+    letter-spacing: 2px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .jumbotron {
+        padding: 1.5rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+}
+
+/* Пользовательские анимации */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Стили для админ-панели */
+.nav-tabs {
+    border-bottom: 1px solid #6c757d;
+}
+
+.nav-tabs .nav-link {
+    border: 1px solid transparent;
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+    color: #f8f9fa;
+}
+
+.nav-tabs .nav-link:hover, 
+.nav-tabs .nav-link:focus {
+    border-color: #6c757d #6c757d #6c757d;
+    color: #fff;
+}
+
+.nav-tabs .nav-link.active {
+    color: #fff;
+    background-color: #343a40;
+    border-color: #6c757d #6c757d #343a40;
+}
+
+/* Стилизация кода */
+code {
+    background-color: #343a40;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.2rem;
+    color: #e83e8c;
+}
+
+/* Стили для подвала */
+footer {
+    margin-top: 3rem;
+    padding: 2rem 0;
+    border-top: 1px solid #343a40;
+}
+
+/* Скроллбар */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #343a40;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+} 

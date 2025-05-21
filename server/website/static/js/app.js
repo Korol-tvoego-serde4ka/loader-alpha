@@ -1,0 +1,597 @@
+// Глобальные переменные
+let token = localStorage.getItem('token');
+let userData = null;
+
+// Константы API
+const API_URL = '/api';
+
+// Утилиты для работы с API
+const api = {
+    // Отправка запроса
+    request: async (endpoint, method = 'GET', data = null, includeToken = true) => {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        if (includeToken && token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const options = {
+            method,
+            headers
+        };
+        
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+        
+        try {
+            const response = await fetch(`${API_URL}${endpoint}`, options);
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.message || 'Ошибка запроса');
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('API Error:', error);
+            throw error;
+        }
+    },
+    
+    // Авторизация
+    login: (username, password) => {
+        return api.request('/auth/login', 'POST', { username, password }, false);
+    },
+    
+    // Регистрация
+    register: (username, email, password, invite_code) => {
+        return api.request('/users/register', 'POST', { username, email, password, invite_code }, false);
+    },
+    
+    // Получение информации о пользователе
+    getUserInfo: () => {
+        return api.request('/users/me');
+    },
+    
+    // Получение ключей пользователя
+    getKeys: () => {
+        return api.request('/keys');
+    },
+    
+    // Активация ключа
+    redeemKey: (key) => {
+        return api.request('/keys/redeem', 'POST', { key });
+    },
+    
+    // Получение инвайтов пользователя
+    getInvites: () => {
+        return api.request('/invites');
+    },
+    
+    // Создание инвайта
+    generateInvite: () => {
+        return api.request('/invites/generate', 'POST');
+    },
+    
+    // Генерация кода для привязки Discord
+    generateDiscordCode: () => {
+        return api.request('/users/discord-code', 'POST');
+    },
+    
+    // Получение списка пользователей (для админов)
+    getUsers: () => {
+        return api.request('/admin/users');
+    },
+    
+    // Бан пользователя
+    banUser: (userId) => {
+        return api.request(`/admin/users/${userId}/ban`, 'POST');
+    },
+    
+    // Разбан пользователя
+    unbanUser: (userId) => {
+        return api.request(`/admin/users/${userId}/unban`, 'POST');
+    },
+    
+    // Генерация ключа (для админов)
+    generateKey: (duration_hours, user_id = null) => {
+        const data = { duration_hours };
+        if (user_id) {
+            data.user_id = user_id;
+        }
+        return api.request('/keys/generate', 'POST', data);
+    }
+};
+
+// Утилиты для форматирования
+const utils = {
+    // Форматирование даты
+    formatDate: (isoString) => {
+        const date = new Date(isoString);
+        return date.toLocaleString('ru-RU');
+    },
+    
+    // Форматирование оставшегося времени
+    formatTimeLeft: (seconds) => {
+        if (seconds <= 0) {
+            return 'истек';
+        }
+        
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        
+        let result = '';
+        if (days > 0) {
+            result += `${days} дн. `;
+        }
+        if (hours > 0) {
+            result += `${hours} ч. `;
+        }
+        if (minutes > 0) {
+            result += `${minutes} мин.`;
+        }
+        
+        return result.trim() || 'менее минуты';
+    },
+    
+    // Определение роли пользователя
+    getUserRole: (user) => {
+        if (user.is_admin) {
+            return 'Администратор';
+        } else if (user.is_support) {
+            return 'Саппорт';
+        } else {
+            return 'Пользователь';
+        }
+    }
+};
+
+// Навигация по страницам
+const navigation = {
+    // Текущая страница
+    currentPage: null,
+    
+    // Переход на страницу
+    navigateTo: (page) => {
+        // Скрытие всех страниц
+        document.querySelectorAll('.page-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        
+        // Отображение нужной страницы
+        const pageElement = document.getElementById(`${page}-page`);
+        if (pageElement) {
+            pageElement.style.display = 'block';
+            navigation.currentPage = page;
+            
+            // Обновление состояния страницы
+            switch (page) {
+                case 'keys':
+                    loadKeys();
+                    break;
+                case 'invites':
+                    loadInvites();
+                    break;
+                case 'discord':
+                    loadDiscordStatus();
+                    break;
+                case 'admin':
+                    loadAdminData();
+                    break;
+            }
+            
+            // Обновление URL
+            if (page === 'home') {
+                history.pushState(null, '', '#');
+            } else {
+                history.pushState(null, '', `#${page}`);
+            }
+        } else {
+            console.error(`Страница "${page}" не найдена`);
+        }
+    }
+};
+
+// Аутентификация
+const auth = {
+    // Проверка авторизации
+    checkAuth: async () => {
+        if (!token) {
+            auth.logout();
+            return false;
+        }
+        
+        try {
+            userData = await api.getUserInfo();
+            
+            // Отображение имени пользователя
+            document.getElementById('username-display').textContent = userData.username;
+            
+            // Отображение элементов для авторизованных пользователей
+            document.getElementById('login-buttons').style.display = 'none';
+            document.getElementById('user-info').style.display = 'flex';
+            document.getElementById('home-buttons').style.display = 'none';
+            document.getElementById('download-button').style.display = 'block';
+            
+            // Отображение админ-панели для админов и саппорта
+            if (userData.is_admin || userData.is_support) {
+                document.getElementById('nav-admin').style.display = 'block';
+                document.querySelectorAll('.admin-command').forEach(el => {
+                    el.style.display = 'table-row';
+                });
+                document.getElementById('admin-commands').style.display = 'table-row';
+            } else {
+                document.getElementById('nav-admin').style.display = 'none';
+                document.querySelectorAll('.admin-command').forEach(el => {
+                    el.style.display = 'none';
+                });
+                document.getElementById('admin-commands').style.display = 'none';
+            }
+            
+            return true;
+        } catch (error) {
+            auth.logout();
+            return false;
+        }
+    },
+    
+    // Выход из системы
+    logout: () => {
+        token = null;
+        userData = null;
+        localStorage.removeItem('token');
+        
+        // Скрытие элементов для авторизованных пользователей
+        document.getElementById('login-buttons').style.display = 'flex';
+        document.getElementById('user-info').style.display = 'none';
+        document.getElementById('home-buttons').style.display = 'block';
+        document.getElementById('download-button').style.display = 'none';
+        document.getElementById('nav-admin').style.display = 'none';
+        
+        // Переход на главную страницу
+        navigation.navigateTo('home');
+    }
+};
+
+// Загрузка данных
+
+// Загрузка ключей пользователя
+async function loadKeys() {
+    document.getElementById('keys-loading').style.display = 'block';
+    document.getElementById('no-keys').style.display = 'none';
+    document.getElementById('keys-list').style.display = 'none';
+    
+    try {
+        const keysData = await api.getKeys();
+        const keys = keysData.keys.filter(key => key.is_active);
+        
+        if (keys.length === 0) {
+            document.getElementById('no-keys').style.display = 'block';
+        } else {
+            const tableBody = document.getElementById('keys-table-body');
+            tableBody.innerHTML = '';
+            
+            keys.forEach(key => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${key.key}</td>
+                    <td>${utils.formatDate(key.created_at)}</td>
+                    <td>${utils.formatDate(key.expires_at)}</td>
+                    <td>${utils.formatTimeLeft(key.time_left)}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            document.getElementById('keys-list').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке ключей:', error);
+    } finally {
+        document.getElementById('keys-loading').style.display = 'none';
+    }
+}
+
+// Загрузка инвайтов пользователя
+async function loadInvites() {
+    document.getElementById('invites-loading').style.display = 'block';
+    document.getElementById('no-invites').style.display = 'none';
+    document.getElementById('invites-list').style.display = 'none';
+    
+    try {
+        const invitesData = await api.getInvites();
+        const invites = invitesData.invites;
+        
+        if (invites.length === 0) {
+            document.getElementById('no-invites').style.display = 'block';
+        } else {
+            const tableBody = document.getElementById('invites-table-body');
+            tableBody.innerHTML = '';
+            
+            invites.forEach(invite => {
+                const row = document.createElement('tr');
+                const status = invite.used ? 'Использован' : 'Активен';
+                row.innerHTML = `
+                    <td>${invite.code}</td>
+                    <td>${utils.formatDate(invite.created_at)}</td>
+                    <td>${utils.formatDate(invite.expires_at)}</td>
+                    <td>${status}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            document.getElementById('invites-list').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке инвайтов:', error);
+    } finally {
+        document.getElementById('invites-loading').style.display = 'none';
+    }
+}
+
+// Загрузка статуса Discord
+async function loadDiscordStatus() {
+    document.getElementById('discord-status-loading').style.display = 'block';
+    document.getElementById('discord-not-linked').style.display = 'none';
+    document.getElementById('discord-linked').style.display = 'none';
+    document.getElementById('discord-code-card').style.display = 'none';
+    
+    try {
+        const userData = await api.getUserInfo();
+        
+        if (userData.discord_linked) {
+            document.getElementById('discord-username').textContent = userData.discord_username;
+            document.getElementById('discord-linked').style.display = 'block';
+        } else {
+            document.getElementById('discord-not-linked').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке статуса Discord:', error);
+    } finally {
+        document.getElementById('discord-status-loading').style.display = 'none';
+    }
+}
+
+// Загрузка админ-данных
+async function loadAdminData() {
+    // Загрузка списка пользователей
+    document.getElementById('users-loading').style.display = 'block';
+    document.getElementById('users-list').style.display = 'none';
+    
+    try {
+        const usersData = await api.getUsers();
+        const users = usersData.users;
+        
+        const tableBody = document.getElementById('users-table-body');
+        tableBody.innerHTML = '';
+        
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            const role = utils.getUserRole(user);
+            const status = user.is_banned ? 'Заблокирован' : 'Активен';
+            const discordStatus = user.discord_linked ? user.discord_username : 'Не привязан';
+            
+            row.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+                <td>${role}</td>
+                <td>${discordStatus}</td>
+                <td>${status}</td>
+                <td>
+                    ${user.is_banned ? 
+                        `<button class="btn btn-success btn-sm unban-user" data-id="${user.id}">Разблокировать</button>` :
+                        `<button class="btn btn-danger btn-sm ban-user" data-id="${user.id}">Заблокировать</button>`
+                    }
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+        
+        // Обработчики событий для кнопок бана/разбана
+        document.querySelectorAll('.ban-user').forEach(button => {
+            button.addEventListener('click', async () => {
+                const userId = button.getAttribute('data-id');
+                try {
+                    await api.banUser(userId);
+                    loadAdminData();
+                } catch (error) {
+                    alert(`Ошибка блокировки пользователя: ${error.message}`);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.unban-user').forEach(button => {
+            button.addEventListener('click', async () => {
+                const userId = button.getAttribute('data-id');
+                try {
+                    await api.unbanUser(userId);
+                    loadAdminData();
+                } catch (error) {
+                    alert(`Ошибка разблокировки пользователя: ${error.message}`);
+                }
+            });
+        });
+        
+        document.getElementById('users-list').style.display = 'block';
+    } catch (error) {
+        console.error('Ошибка при загрузке списка пользователей:', error);
+    } finally {
+        document.getElementById('users-loading').style.display = 'none';
+    }
+}
+
+// Инициализация приложения
+async function initApp() {
+    // Проверка авторизации
+    const isAuthenticated = await auth.checkAuth();
+    
+    // Определение стартовой страницы
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+        if (hash === 'login' || hash === 'register') {
+            if (isAuthenticated) {
+                navigation.navigateTo('home');
+            } else {
+                navigation.navigateTo(hash);
+            }
+        } else if (['keys', 'invites', 'discord', 'admin'].includes(hash)) {
+            if (isAuthenticated) {
+                navigation.navigateTo(hash);
+            } else {
+                navigation.navigateTo('login');
+            }
+        } else {
+            navigation.navigateTo('home');
+        }
+    } else {
+        navigation.navigateTo('home');
+    }
+    
+    // Обработчики событий
+    
+    // Обработка навигации
+    document.querySelectorAll('.navbar-nav a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            if (link.getAttribute('href').startsWith('#')) {
+                e.preventDefault();
+                const page = link.getAttribute('href').substring(1) || 'home';
+                navigation.navigateTo(page);
+            }
+        });
+    });
+    
+    // Обработка хэша URL
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.substring(1) || 'home';
+        navigation.navigateTo(hash);
+    });
+    
+    // Выход из системы
+    document.getElementById('logout-button').addEventListener('click', (e) => {
+        e.preventDefault();
+        auth.logout();
+    });
+    
+    // Форма входа
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        
+        document.getElementById('login-error').style.display = 'none';
+        
+        try {
+            const result = await api.login(username, password);
+            token = result.token;
+            localStorage.setItem('token', token);
+            
+            await auth.checkAuth();
+            navigation.navigateTo('home');
+        } catch (error) {
+            document.getElementById('login-error').textContent = error.message;
+            document.getElementById('login-error').style.display = 'block';
+        }
+    });
+    
+    // Форма регистрации
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('register-username').value;
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        const invite_code = document.getElementById('register-invite').value;
+        
+        document.getElementById('register-error').style.display = 'none';
+        
+        try {
+            await api.register(username, email, password, invite_code);
+            
+            // Автоматический вход после регистрации
+            const loginResult = await api.login(username, password);
+            token = loginResult.token;
+            localStorage.setItem('token', token);
+            
+            await auth.checkAuth();
+            navigation.navigateTo('keys');
+        } catch (error) {
+            document.getElementById('register-error').textContent = error.message;
+            document.getElementById('register-error').style.display = 'block';
+        }
+    });
+    
+    // Форма активации ключа
+    document.getElementById('redeem-key-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const key = document.getElementById('redeem-key').value;
+        
+        document.getElementById('redeem-error').style.display = 'none';
+        document.getElementById('redeem-success').style.display = 'none';
+        
+        try {
+            await api.redeemKey(key);
+            
+            document.getElementById('redeem-success').style.display = 'block';
+            document.getElementById('redeem-key').value = '';
+            
+            // Обновление списка ключей
+            loadKeys();
+        } catch (error) {
+            document.getElementById('redeem-error').textContent = error.message;
+            document.getElementById('redeem-error').style.display = 'block';
+        }
+    });
+    
+    // Кнопка создания приглашения
+    document.getElementById('generate-invite-button').addEventListener('click', async () => {
+        try {
+            await api.generateInvite();
+            loadInvites();
+        } catch (error) {
+            alert(`Ошибка создания приглашения: ${error.message}`);
+        }
+    });
+    
+    // Кнопка генерации кода Discord
+    document.getElementById('generate-discord-code-button').addEventListener('click', async () => {
+        try {
+            const result = await api.generateDiscordCode();
+            
+            document.getElementById('discord-code').textContent = result.code;
+            document.getElementById('discord-code-card').style.display = 'block';
+        } catch (error) {
+            alert(`Ошибка генерации кода: ${error.message}`);
+        }
+    });
+    
+    // Форма генерации ключа (админ)
+    document.getElementById('generate-key-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const duration = parseInt(document.getElementById('key-duration').value);
+        const userIdValue = document.getElementById('key-user').value;
+        const userId = userIdValue ? parseInt(userIdValue) : null;
+        
+        document.getElementById('generate-key-error').style.display = 'none';
+        document.getElementById('generate-key-success').style.display = 'none';
+        
+        try {
+            const result = await api.generateKey(duration, userId);
+            
+            document.getElementById('generated-key').textContent = result.key;
+            document.getElementById('generate-key-success').style.display = 'block';
+        } catch (error) {
+            document.getElementById('generate-key-error').textContent = error.message;
+            document.getElementById('generate-key-error').style.display = 'block';
+        }
+    });
+}
+
+// Запуск приложения при загрузке страницы
+document.addEventListener('DOMContentLoaded', initApp); 

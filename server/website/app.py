@@ -1,0 +1,693 @@
+from flask import Flask, request, jsonify, send_from_directory
+from flask_restful import Api, Resource
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
+import sys
+import datetime
+import secrets
+import string
+from passlib.context import CryptContext
+
+# Добавление пути к корню проекта
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from database.models import SessionLocal, User, Key, Invite, DiscordCode
+
+# Настройка шифрования паролей
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Создание приложения Flask
+app = Flask(__name__, static_folder="static")
+CORS(app)
+api = Api(app)
+
+# Настройка JWT
+app.config["JWT_SECRET_KEY"] = os.getenv("SECRET_KEY", "your_secret_key")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(days=1)
+jwt = JWTManager(app)
+
+# Функция для получения сессии базы данных
+def get_db():
+    db = SessionLocal()
+    try:
+        return db
+    finally:
+        db.close()
+
+# Функция для хеширования пароля
+def hash_password(password):
+    return pwd_context.hash(password)
+
+# Функция для проверки пароля
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+# Генерация случайного кода для привязки Discord аккаунта
+def generate_discord_code():
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(chars) for _ in range(6))
+
+# API ресурсы
+class Login(Resource):
+    def post(self):
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+        
+        db = get_db()
+        user = db.query(User).filter(User.username == username).first()
+        
+        if not user or not verify_password(password, user.password_hash):
+            return {"message": "Неверное имя пользователя или пароль"}, 401
+        
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Создание JWT токена
+        expires = datetime.timedelta(days=1)
+        access_token = create_access_token(identity=user.id, expires_delta=expires)
+        
+        return {
+            "token": access_token,
+            "expires_at": (datetime.datetime.utcnow() + expires).isoformat()
+        }
+
+class Register(Resource):
+    def post(self):
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+        email = data.get("email")
+        invite_code = data.get("invite_code")
+        
+        db = get_db()
+        
+        # Проверка инвайт-кода
+        invite = db.query(Invite).filter(Invite.code == invite_code, Invite.used == False).first()
+        if not invite or invite.is_expired():
+            return {"message": "Недействительный инвайт-код"}, 400
+        
+        # Проверка, что имя пользователя и email не заняты
+        if db.query(User).filter(User.username == username).first():
+            return {"message": "Имя пользователя уже занято"}, 400
+            
+        if db.query(User).filter(User.email == email).first():
+            return {"message": "Email уже используется"}, 400
+        
+        # Создание нового пользователя
+        new_user = User(
+            username=username,
+            email=email,
+            password_hash=hash_password(password)
+        )
+        
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        # Пометить инвайт как использованный
+        invite.used = True
+        invite.used_by_id = new_user.id
+        db.commit()
+        
+        # Создание тестового ключа на 24 часа
+        test_key_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+        test_key = Key(
+            user_id=new_user.id,
+            expires_at=test_key_expiry
+        )
+        
+        db.add(test_key)
+        db.commit()
+        
+        return {
+            "message": "Регистрация успешна",
+            "id": new_user.id,
+            "username": new_user.username,
+            "created_at": new_user.created_at.isoformat(),
+            "test_key": test_key.key
+        }
+
+class KeyResource(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        keys = db.query(Key).filter(Key.user_id == user_id).all()
+        
+        return {
+            "keys": [
+                {
+                    "id": key.id,
+                    "key": key.key,
+                    "created_at": key.created_at.isoformat(),
+                    "expires_at": key.expires_at.isoformat(),
+                    "is_active": key.is_active and not key.is_expired(),
+                    "time_left": key.time_left()
+                } for key in keys
+            ]
+        }
+
+class GenerateKey(Resource):
+    @jwt_required()
+    def post(self):
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        duration_hours = data.get("duration_hours", 24)
+        target_user_id = data.get("user_id")
+        
+        db = get_db()
+        
+        # Проверка, что пользователь является администратором
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user.is_admin and not user.is_support:
+            return {"message": "Недостаточно прав для генерации ключа"}, 403
+        
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Если указан пользователь, проверяем его существование
+        if target_user_id:
+            target_user = db.query(User).filter(User.id == target_user_id).first()
+            if not target_user:
+                return {"message": "Пользователь не найден"}, 404
+        
+        # Создание нового ключа
+        key_expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
+        new_key = Key(
+            user_id=target_user_id,  # Может быть None, если ключ не привязан к пользователю
+            expires_at=key_expiry
+        )
+        
+        db.add(new_key)
+        db.commit()
+        db.refresh(new_key)
+        
+        return {
+            "key": new_key.key,
+            "created_at": new_key.created_at.isoformat(),
+            "expires_at": new_key.expires_at.isoformat()
+        }
+
+class RedeemKey(Resource):
+    @jwt_required()
+    def post(self):
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        key_string = data.get("key")
+        
+        db = get_db()
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Поиск ключа
+        key = db.query(Key).filter(Key.key == key_string).first()
+        if not key:
+            return {"message": "Ключ не найден"}, 404
+        
+        # Проверка, что ключ не истёк и активен
+        if key.is_expired():
+            return {"message": "Ключ истёк"}, 400
+        
+        if not key.is_active:
+            return {"message": "Ключ неактивен"}, 400
+        
+        # Проверка, что ключ свободен или уже принадлежит пользователю
+        if key.user_id is not None and key.user_id != user_id:
+            return {"message": "Ключ уже занят другим пользователем"}, 400
+        
+        # Привязка ключа к пользователю, если он ещё не привязан
+        if key.user_id is None:
+            key.user_id = user_id
+            key.activated_at = datetime.datetime.utcnow()
+            db.commit()
+            db.refresh(key)
+        
+        return {
+            "success": True,
+            "key": {
+                "id": key.id,
+                "key": key.key,
+                "created_at": key.created_at.isoformat(),
+                "expires_at": key.expires_at.isoformat(),
+                "is_active": key.is_active,
+                "time_left": key.time_left()
+            }
+        }
+
+class VerifyKey(Resource):
+    def post(self):
+        data = request.get_json()
+        key_string = data.get("key")
+        
+        db = get_db()
+        
+        # Поиск ключа
+        key = db.query(Key).filter(Key.key == key_string).first()
+        if not key:
+            return {"valid": False}, 200
+        
+        # Проверка, что ключ не истёк и активен
+        if key.is_expired() or not key.is_active:
+            return {"valid": False}, 200
+        
+        # Проверка, что ключ привязан к пользователю
+        if key.user_id is None:
+            return {"valid": False}, 200
+        
+        # Получение данных пользователя
+        user = db.query(User).filter(User.id == key.user_id).first()
+        if not user or user.is_banned:
+            return {"valid": False}, 200
+        
+        return {
+            "valid": True,
+            "expires_at": key.expires_at.isoformat(),
+            "time_left": key.time_left(),
+            "user": {
+                "id": user.id,
+                "username": user.username
+            }
+        }
+
+class UserInfo(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        return {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "created_at": user.created_at.isoformat(),
+            "is_admin": user.is_admin,
+            "is_support": user.is_support,
+            "discord_linked": user.discord_id is not None,
+            "discord_username": user.discord_username
+        }
+
+class GenerateInvite(Resource):
+    @jwt_required()
+    def post(self):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Создание инвайт-кода со сроком действия 30 дней
+        invite_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+        
+        invite = Invite(
+            created_by_id=user_id,
+            expires_at=invite_expiry
+        )
+        
+        db.add(invite)
+        db.commit()
+        db.refresh(invite)
+        
+        return {
+            "code": invite.code,
+            "created_at": invite.created_at.isoformat(),
+            "expires_at": invite.expires_at.isoformat()
+        }
+
+class InviteList(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        invites = db.query(Invite).filter(Invite.created_by_id == user_id).all()
+        
+        return {
+            "invites": [
+                {
+                    "id": invite.id,
+                    "code": invite.code,
+                    "created_at": invite.created_at.isoformat(),
+                    "expires_at": invite.expires_at.isoformat(),
+                    "used": invite.used,
+                    "used_by": invite.used_by.username if invite.used_by else None
+                } for invite in invites
+            ]
+        }
+
+class GenerateDiscordCode(Resource):
+    @jwt_required()
+    def post(self):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Создание кода для привязки Discord аккаунта
+        discord_code_expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+        
+        # Генерация случайного кода
+        code = generate_discord_code()
+        
+        # Удаление старых неиспользованных кодов этого пользователя
+        db.query(DiscordCode).filter(
+            DiscordCode.user_id == user_id,
+            DiscordCode.used == False
+        ).delete()
+        
+        # Создание нового кода
+        discord_code = DiscordCode(
+            code=code,
+            user_id=user_id,
+            expires_at=discord_code_expiry
+        )
+        
+        db.add(discord_code)
+        db.commit()
+        db.refresh(discord_code)
+        
+        return {
+            "code": discord_code.code,
+            "expires_at": discord_code.expires_at.isoformat()
+        }
+
+class VerifyDiscordCode(Resource):
+    def post(self):
+        data = request.get_json()
+        code = data.get("code")
+        discord_id = data.get("discord_id")
+        discord_username = data.get("discord_username")
+        
+        db = get_db()
+        
+        # Поиск кода
+        discord_code = db.query(DiscordCode).filter(
+            DiscordCode.code == code,
+            DiscordCode.used == False
+        ).first()
+        
+        if not discord_code or discord_code.is_expired():
+            return {"success": False, "message": "Недействительный или истекший код"}, 400
+        
+        # Получение пользователя
+        user = db.query(User).filter(User.id == discord_code.user_id).first()
+        if not user:
+            return {"success": False, "message": "Пользователь не найден"}, 404
+        
+        if user.is_banned:
+            return {"success": False, "message": "Аккаунт заблокирован"}, 403
+        
+        # Проверка, что Discord ID не привязан к другому аккаунту
+        existing_discord = db.query(User).filter(User.discord_id == discord_id).first()
+        if existing_discord and existing_discord.id != user.id:
+            return {"success": False, "message": "Discord аккаунт уже привязан к другому пользователю"}, 400
+        
+        # Привязка Discord аккаунта к пользователю
+        user.discord_id = discord_id
+        user.discord_username = discord_username
+        
+        # Пометить код как использованный
+        discord_code.used = True
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "user_id": user.id
+        }
+
+class DiscordRedeemKey(Resource):
+    def post(self):
+        data = request.get_json()
+        key_string = data.get("key")
+        discord_id = data.get("discord_id")
+        
+        db = get_db()
+        
+        # Поиск пользователя по Discord ID
+        user = db.query(User).filter(User.discord_id == discord_id).first()
+        if not user:
+            return {"success": False, "message": "Discord аккаунт не привязан к пользователю"}, 404
+        
+        if user.is_banned:
+            return {"success": False, "message": "Аккаунт заблокирован"}, 403
+        
+        # Поиск ключа
+        key = db.query(Key).filter(Key.key == key_string).first()
+        if not key:
+            return {"success": False, "message": "Ключ не найден"}, 404
+        
+        # Проверка, что ключ не истёк и активен
+        if key.is_expired():
+            return {"success": False, "message": "Ключ истёк"}, 400
+        
+        if not key.is_active:
+            return {"success": False, "message": "Ключ неактивен"}, 400
+        
+        # Проверка, что ключ свободен или уже принадлежит пользователю
+        if key.user_id is not None and key.user_id != user.id:
+            return {"success": False, "message": "Ключ уже занят другим пользователем"}, 400
+        
+        # Привязка ключа к пользователю, если он ещё не привязан
+        if key.user_id is None:
+            key.user_id = user.id
+            key.activated_at = datetime.datetime.utcnow()
+            db.commit()
+            db.refresh(key)
+        
+        return {
+            "success": True,
+            "expires_at": key.expires_at.isoformat(),
+            "time_left": key.time_left()
+        }
+
+class AdminGetUserInfo(Resource):
+    @jwt_required()
+    def get(self, user_id):
+        current_user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что текущий пользователь является администратором или саппортом
+        current_user = db.query(User).filter(User.id == current_user_id).first()
+        if not current_user or (not current_user.is_admin and not current_user.is_support):
+            return {"message": "Недостаточно прав"}, 403
+        
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Получение информации о пользователе
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        # Получение ключей пользователя
+        keys = db.query(Key).filter(Key.user_id == user_id).all()
+        
+        return {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "created_at": user.created_at.isoformat(),
+            "is_admin": user.is_admin,
+            "is_support": user.is_support,
+            "is_banned": user.is_banned,
+            "discord_linked": user.discord_id is not None,
+            "discord_username": user.discord_username,
+            "keys": [
+                {
+                    "id": key.id,
+                    "key": key.key,
+                    "created_at": key.created_at.isoformat(),
+                    "expires_at": key.expires_at.isoformat(),
+                    "is_active": key.is_active and not key.is_expired(),
+                    "time_left": key.time_left()
+                } for key in keys
+            ]
+        }
+
+class AdminBanUser(Resource):
+    @jwt_required()
+    def post(self, user_id):
+        current_user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что текущий пользователь является администратором или саппортом
+        current_user = db.query(User).filter(User.id == current_user_id).first()
+        if not current_user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Администраторы могут банить всех, саппорты только обычных пользователей
+        target_user = db.query(User).filter(User.id == user_id).first()
+        if not target_user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if not current_user.is_admin and (target_user.is_admin or target_user.is_support):
+            return {"message": "Недостаточно прав для бана администратора или саппорта"}, 403
+        
+        # Бан пользователя
+        target_user.is_banned = True
+        db.commit()
+        
+        return {"message": f"Пользователь {target_user.username} заблокирован"}
+
+class AdminUnbanUser(Resource):
+    @jwt_required()
+    def post(self, user_id):
+        current_user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что текущий пользователь является администратором или саппортом
+        current_user = db.query(User).filter(User.id == current_user_id).first()
+        if not current_user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Администраторы могут разбанить всех, саппорты только обычных пользователей
+        target_user = db.query(User).filter(User.id == user_id).first()
+        if not target_user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if not current_user.is_admin and (target_user.is_admin or target_user.is_support):
+            return {"message": "Недостаточно прав для разбана администратора или саппорта"}, 403
+        
+        # Разбан пользователя
+        target_user.is_banned = False
+        db.commit()
+        
+        return {"message": f"Пользователь {target_user.username} разблокирован"}
+
+class AdminGetAllUsers(Resource):
+    @jwt_required()
+    def get(self):
+        current_user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что текущий пользователь является администратором или саппортом
+        current_user = db.query(User).filter(User.id == current_user_id).first()
+        if not current_user or (not current_user.is_admin and not current_user.is_support):
+            return {"message": "Недостаточно прав"}, 403
+        
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Получение списка пользователей
+        users = db.query(User).all()
+        
+        return {
+            "users": [
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "created_at": user.created_at.isoformat(),
+                    "is_admin": user.is_admin,
+                    "is_support": user.is_support,
+                    "is_banned": user.is_banned,
+                    "discord_linked": user.discord_id is not None,
+                    "discord_username": user.discord_username
+                } for user in users
+            ]
+        }
+
+# Загрузка Minecraft модов
+class DownloadMod(Resource):
+    @jwt_required()
+    def get(self, mod_name):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что пользователь существует и не заблокирован
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Проверка, что у пользователя есть активный ключ
+        active_key = db.query(Key).filter(
+            Key.user_id == user_id,
+            Key.is_active == True
+        ).first()
+        
+        if not active_key or active_key.is_expired():
+            return {"message": "Нет активного ключа"}, 403
+        
+        # Проверка существования мода
+        mod_path = os.path.join("static", "mods", mod_name)
+        if not os.path.exists(mod_path):
+            return {"message": "Мод не найден"}, 404
+        
+        return send_from_directory("static/mods", mod_name, as_attachment=True)
+
+# Регистрация API ресурсов
+api.add_resource(Login, "/api/auth/login")
+api.add_resource(Register, "/api/users/register")
+api.add_resource(KeyResource, "/api/keys")
+api.add_resource(GenerateKey, "/api/keys/generate")
+api.add_resource(RedeemKey, "/api/keys/redeem")
+api.add_resource(VerifyKey, "/api/keys/verify")
+api.add_resource(UserInfo, "/api/users/me")
+api.add_resource(GenerateInvite, "/api/invites/generate")
+api.add_resource(InviteList, "/api/invites")
+api.add_resource(GenerateDiscordCode, "/api/users/discord-code")
+api.add_resource(VerifyDiscordCode, "/api/discord/verify-code")
+api.add_resource(DiscordRedeemKey, "/api/discord/redeem-key")
+api.add_resource(AdminGetUserInfo, "/api/admin/users/<int:user_id>")
+api.add_resource(AdminBanUser, "/api/admin/users/<int:user_id>/ban")
+api.add_resource(AdminUnbanUser, "/api/admin/users/<int:user_id>/unban")
+api.add_resource(AdminGetAllUsers, "/api/admin/users")
+api.add_resource(DownloadMod, "/api/download/<string:mod_name>")
+
+# Основной маршрут для одностраничного приложения
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
+
+if __name__ == "__main__":
+    # Создание директории для модов, если она не существует
+    os.makedirs(os.path.join("static", "mods"), exist_ok=True)
+    
+    # Запуск сервера
+    app.run(host="0.0.0.0", port=5000, debug=True) 
