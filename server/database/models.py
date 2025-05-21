@@ -50,11 +50,24 @@ class User(Base):
     discord_id = Column(String(50), unique=True, nullable=True)
     discord_username = Column(String(100), nullable=True)
     
+    # Информация о последнем входе
+    last_login = Column(DateTime, nullable=True)
+    last_ip = Column(String(45), nullable=True)  # IPv6 может быть до 45 символов
+    
     # Отношения
     keys = relationship("Key", back_populates="user")
     created_invites = relationship("Invite", back_populates="created_by", foreign_keys="Invite.created_by_id")
     used_invite = relationship("Invite", uselist=False, back_populates="used_by", foreign_keys="Invite.used_by_id")
     discord_codes = relationship("DiscordCode", back_populates="user")
+    
+    def update_login_info(self, ip_address):
+        """Обновляет информацию о последнем входе пользователя"""
+        self.last_login = datetime.datetime.utcnow()
+        self.last_ip = ip_address
+        
+    def can_create_invite(self):
+        """Проверяет, может ли пользователь создавать инвайты"""
+        return self.is_admin  # Только администраторы могут создавать инвайты
 
 # Модель ключа
 class Key(Base):

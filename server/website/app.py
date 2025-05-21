@@ -65,6 +65,11 @@ class Login(Resource):
         if user.is_banned:
             return {"message": "Ваш аккаунт заблокирован"}, 403
         
+        # Обновление информации о последнем входе
+        ip_address = request.remote_addr
+        user.update_login_info(ip_address)
+        db.commit()
+        
         # Создание JWT токена
         expires = datetime.timedelta(days=1)
         access_token = create_access_token(identity=user.id, expires_delta=expires)
@@ -332,6 +337,10 @@ class GenerateInvite(Resource):
         if user.is_banned:
             return {"message": "Ваш аккаунт заблокирован"}, 403
         
+        # Проверка прав на создание инвайтов
+        if not user.can_create_invite():
+            return {"message": "Недостаточно прав для создания инвайтов"}, 403
+        
         # Создание инвайт-кода со сроком действия 30 дней
         invite_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=30)
         
@@ -363,7 +372,11 @@ class InviteList(Resource):
         if user.is_banned:
             return {"message": "Ваш аккаунт заблокирован"}, 403
         
-        invites = db.query(Invite).filter(Invite.created_by_id == user_id).all()
+        # Для администраторов показываем все инвайты, для остальных - только свои
+        if user.is_admin:
+            invites = db.query(Invite).all()
+        else:
+            invites = db.query(Invite).filter(Invite.created_by_id == user_id).all()
         
         return {
             "invites": [
@@ -373,7 +386,8 @@ class InviteList(Resource):
                     "created_at": invite.created_at.isoformat(),
                     "expires_at": invite.expires_at.isoformat(),
                     "used": invite.used,
-                    "used_by": invite.used_by.username if invite.used_by else None
+                    "used_by": invite.used_by.username if invite.used_by else None,
+                    "created_by": invite.created_by.username
                 } for invite in invites
             ]
         }
@@ -536,6 +550,8 @@ class AdminGetUserInfo(Resource):
             "username": user.username,
             "email": user.email,
             "created_at": user.created_at.isoformat(),
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+            "last_ip": user.last_ip,
             "is_admin": user.is_admin,
             "is_support": user.is_support,
             "is_banned": user.is_banned,
@@ -633,6 +649,7 @@ class AdminGetAllUsers(Resource):
                     "username": user.username,
                     "email": user.email,
                     "created_at": user.created_at.isoformat(),
+                    "last_login": user.last_login.isoformat() if user.last_login else None,
                     "is_admin": user.is_admin,
                     "is_support": user.is_support,
                     "is_banned": user.is_banned,
@@ -720,6 +737,42 @@ class DownloadMod(Resource):
         
         return send_from_directory("static/mods", mod_name, as_attachment=True)
 
+# Добавление нового класса AdminUserActivity для просмотра последних входов и IP-адресов пользователей
+class AdminUserActivity(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что пользователь является администратором
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.is_admin:
+            return {"message": "Недостаточно прав для просмотра активности пользователей"}, 403
+            
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Получение всех пользователей с данными о последнем входе
+        users = db.query(User).order_by(User.last_login.desc().nullslast()).all()
+        
+        return {
+            "users": [
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "created_at": user.created_at.isoformat(),
+                    "last_login": user.last_login.isoformat() if user.last_login else None,
+                    "last_ip": user.last_ip,
+                    "is_admin": user.is_admin,
+                    "is_support": user.is_support,
+                    "is_banned": user.is_banned,
+                    "discord_linked": user.discord_id is not None,
+                    "discord_username": user.discord_username
+                } for user in users
+            ]
+        }
+
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
 api.add_resource(Register, "/api/users/register")
@@ -738,6 +791,7 @@ api.add_resource(AdminBanUser, "/api/admin/users/<int:user_id>/ban")
 api.add_resource(AdminUnbanUser, "/api/admin/users/<int:user_id>/unban")
 api.add_resource(AdminSetRole, "/api/admin/users/<int:user_id>/role")
 api.add_resource(AdminGetAllUsers, "/api/admin/users")
+api.add_resource(AdminUserActivity, "/api/admin/users/activity")
 api.add_resource(DownloadMod, "/api/download/<string:mod_name>")
 
 # Основной маршрут для одностраничного приложения
