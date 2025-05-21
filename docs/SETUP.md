@@ -295,3 +295,71 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 Полученный ключ скопируйте в .env файл в параметр SECRET_KEY.
+
+### Восстановление администраторских прав
+
+Если вы случайно удалили себя из администраторов, вы можете восстановить права через прямой доступ к базе данных:
+
+1. Войдите в PostgreSQL:
+```bash
+sudo -u postgres psql loader_alpha
+```
+
+2. Обновите свой аккаунт для получения администраторских прав:
+```sql
+-- Замените 'username' на ваше имя пользователя
+UPDATE users SET is_admin = true WHERE username = 'username';
+```
+
+3. Для восстановления другого аккаунта:
+```sql
+-- По имени пользователя
+UPDATE users SET is_admin = true WHERE username = 'username';
+
+-- Или по ID пользователя
+UPDATE users SET is_admin = true WHERE id = 1;
+```
+
+4. Просмотр списка пользователей:
+```sql
+SELECT id, username, is_admin, is_support, is_banned FROM users;
+```
+
+5. Выйдите из PostgreSQL:
+```sql
+\q
+```
+
+Альтернативный способ - создание скрипта для сброса прав администратора:
+
+1. Создайте файл `reset_admin.py` в директории сервера:
+```python
+import sys
+import os
+from database.models import SessionLocal, User
+
+def reset_admin(username):
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            print(f"Пользователь {username} не найден")
+            return
+        
+        user.is_admin = True
+        db.commit()
+        print(f"Администраторские права восстановлены для пользователя {username}")
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Использование: python reset_admin.py username")
+    else:
+        reset_admin(sys.argv[1])
+```
+
+2. Запустите скрипт:
+```bash
+python reset_admin.py username
+```

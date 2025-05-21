@@ -18,6 +18,7 @@ loader-alpha/
 │
 ├── server/                  # Серверная часть (Ubuntu)
 │   ├── website/             # Веб-сайт для управления ключами
+│   │   └── static/downloads/  # Директория для размещения файлов лоадера
 │   ├── discord_bot/         # Discord бот
 │   ├── database/            # Скрипты и модели базы данных
 │   └── requirements.txt     # Зависимости для сервера
@@ -52,13 +53,22 @@ loader-alpha/
    python database/init_db.py
    ```
 
-3. Запустите веб-сервер:
+3. Разместите собранный лоадер в директории для скачивания:
+   ```bash
+   mkdir -p website/static/downloads
+   cp /путь/к/собранному/minecraft-loader-alpha.exe website/static/downloads/
+   ```
+   
+   **Важно**: Лоадер должен находиться в директории `server/website/static/downloads/` 
+   для корректной работы функции скачивания через веб-интерфейс.
+
+4. Запустите веб-сервер:
    ```bash
    cd website
    python app.py
    ```
 
-4. Запустите Discord бота:
+5. Запустите Discord бота:
    ```bash
    cd discord_bot
    python bot.py
