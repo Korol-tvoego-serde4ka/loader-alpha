@@ -88,6 +88,11 @@ const api = {
         return api.request('/admin/users');
     },
     
+    // Получение данных активности пользователей (для админов)
+    getUsersActivity: () => {
+        return api.request('/admin/users/activity');
+    },
+    
     // Бан пользователя
     banUser: (userId) => {
         return api.request(`/admin/users/${userId}/ban`, 'POST');
@@ -372,7 +377,8 @@ async function loadAdminData() {
     document.getElementById('users-list').style.display = 'none';
     
     try {
-        const usersData = await api.getUsers();
+        // Получаем данные активности пользователей
+        const usersData = await api.getUsersActivity();
         const users = usersData.users;
         
         const tableBody = document.getElementById('users-table-body');
@@ -391,6 +397,8 @@ async function loadAdminData() {
                 <td>${role}</td>
                 <td>${discordStatus}</td>
                 <td>${status}</td>
+                <td>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Никогда'}</td>
+                <td>${user.last_ip || 'Неизвестно'}</td>
                 <td>
                     ${user.is_banned ? 
                         `<button class="btn btn-success btn-sm unban-user" data-id="${user.id}">Разблокировать</button>` :
