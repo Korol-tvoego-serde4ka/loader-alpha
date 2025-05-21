@@ -47,6 +47,11 @@ postgres=# \q
    ADMIN_USERNAME=admin
    ADMIN_PASSWORD=admin_password
    ADMIN_EMAIL=admin@example.com
+   
+   # ID ролей Discord (рекомендуется использовать вместо имен)
+   DISCORD_ADMIN_ROLE_ID=123456789012345678
+   DISCORD_SUPPORT_ROLE_ID=123456789012345678
+   DISCORD_SUBSCRIBER_ROLE_ID=123456789012345678
 ```
 
 5. Инициализируйте базу данных:
@@ -54,7 +59,18 @@ postgres=# \q
 python database/init_db.py
 ```
 
-6. Запустите сервисы:
+6. Создайте директории для загрузки клиента:
+```bash
+mkdir -p website/static/downloads
+```
+
+7. Скопируйте собранный лоадер в директорию загрузок:
+```bash
+# После сборки клиента на Windows
+cp /путь/к/собранному/minecraft-loader-alpha.exe website/static/downloads/
+```
+
+8. Запустите сервисы:
 ```bash
 # Запуск веб-сервера
 cd website
@@ -65,7 +81,7 @@ cd discord_bot
 python bot.py
 ```
 
-7. Настройте Nginx для проксирования запросов (опционально):
+9. Настройте Nginx для проксирования запросов (опционально):
 ```bash
 sudo apt install nginx
 sudo nano /etc/nginx/sites-available/loader-alpha
@@ -234,3 +250,12 @@ sudo systemctl enable postgresql
    - Admin (для администраторов)
    - Support (для саппорта)
    - Subs (для подписчиков с активными ключами)
+   
+8. Получите ID созданных ролей:
+   - Включите режим разработчика в Discord (Settings > Advanced > Developer Mode)
+   - Кликните правой кнопкой мыши на роль и выберите "Copy ID"
+   - Укажите полученные ID в .env файле:
+     - DISCORD_ADMIN_ROLE_ID=123456789012345678 (замените на ID вашей роли Admin)
+     - DISCORD_SUPPORT_ROLE_ID=123456789012345678 (замените на ID вашей роли Support)
+     - DISCORD_SUBSCRIBER_ROLE_ID=123456789012345678 (замените на ID вашей роли Subs)
+   - ВАЖНО: Бот использует только ID ролей, не имена. Вы можете менять названия ролей в Discord без изменения кода.

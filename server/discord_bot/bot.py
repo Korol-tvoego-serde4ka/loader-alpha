@@ -22,10 +22,10 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 SERVER_API_URL = os.getenv("SERVER_API_URL", "http://localhost:5000/api")
 
-# Настройка ролей на сервере Discord
-ADMIN_ROLE_NAME = "Admin"
-SUPPORT_ROLE_NAME = "Support"
-SUBSCRIBER_ROLE_NAME = "Subs"
+# Настройка ролей на сервере Discord только через ID
+ADMIN_ROLE_ID = int(os.getenv("DISCORD_ADMIN_ROLE_ID", "0"))
+SUPPORT_ROLE_ID = int(os.getenv("DISCORD_SUPPORT_ROLE_ID", "0"))
+SUBSCRIBER_ROLE_ID = int(os.getenv("DISCORD_SUBSCRIBER_ROLE_ID", "0"))
 
 # Создание интенций бота
 intents = discord.Intents.default()
@@ -129,15 +129,24 @@ def format_time_left(seconds):
 # Проверка роли пользователя
 def is_admin(interaction: discord.Interaction):
     """Проверяет, имеет ли пользователь роль админа"""
-    return any(role.name == ADMIN_ROLE_NAME for role in interaction.user.roles)
+    if not ADMIN_ROLE_ID:
+        print("ВНИМАНИЕ: DISCORD_ADMIN_ROLE_ID не настроен в .env файле")
+        return False
+    return any(role.id == ADMIN_ROLE_ID for role in interaction.user.roles)
 
 def is_support(interaction: discord.Interaction):
     """Проверяет, имеет ли пользователь роль саппорта"""
-    return any(role.name == SUPPORT_ROLE_NAME for role in interaction.user.roles)
+    if not SUPPORT_ROLE_ID:
+        print("ВНИМАНИЕ: DISCORD_SUPPORT_ROLE_ID не настроен в .env файле")
+        return False
+    return any(role.id == SUPPORT_ROLE_ID for role in interaction.user.roles)
 
 def is_subscriber(interaction: discord.Interaction):
     """Проверяет, имеет ли пользователь роль подписчика"""
-    return any(role.name == SUBSCRIBER_ROLE_NAME for role in interaction.user.roles)
+    if not SUBSCRIBER_ROLE_ID:
+        print("ВНИМАНИЕ: DISCORD_SUBSCRIBER_ROLE_ID не настроен в .env файле")
+        return False
+    return any(role.id == SUBSCRIBER_ROLE_ID for role in interaction.user.roles)
 
 def is_admin_or_support(interaction: discord.Interaction):
     """Проверяет, имеет ли пользователь роль админа или саппорта"""
@@ -194,15 +203,16 @@ async def check_expired_keys():
                 for guild in bot.guilds:
                     member = guild.get_member(int(user.discord_id))
                     if member:
-                        # Поиск роли подписчика
-                        subscriber_role = discord.utils.get(guild.roles, name=SUBSCRIBER_ROLE_NAME)
-                        if subscriber_role and subscriber_role in member.roles:
-                            # Удаление роли подписчика
-                            try:
-                                await member.remove_roles(subscriber_role)
-                                print(f"У пользователя {member.name} удалена роль {SUBSCRIBER_ROLE_NAME}")
-                            except Exception as e:
-                                print(f"Ошибка при удалении роли у {member.name}: {e}")
+                        # Поиск роли подписчика по ID
+                        if SUBSCRIBER_ROLE_ID:
+                            subscriber_role = guild.get_role(SUBSCRIBER_ROLE_ID)
+                            if subscriber_role and subscriber_role in member.roles:
+                                # Удаление роли подписчика
+                                try:
+                                    await member.remove_roles(subscriber_role)
+                                    print(f"У пользователя {member.name} удалена роль {subscriber_role.name}")
+                                except Exception as e:
+                                    print(f"Ошибка при удалении роли у {member.name}: {e}")
     
     except Exception as e:
         print(f"Ошибка при проверке истекших ключей: {e}")
@@ -248,8 +258,8 @@ async def link_discord(interaction: discord.Interaction, code: str):
                     has_valid_key = True
                     break
             
-            if has_valid_key:
-                subscriber_role = discord.utils.get(interaction.guild.roles, name=SUBSCRIBER_ROLE_NAME)
+            if has_valid_key and SUBSCRIBER_ROLE_ID:
+                subscriber_role = interaction.guild.get_role(SUBSCRIBER_ROLE_ID)
                 if subscriber_role:
                     await interaction.user.add_roles(subscriber_role)
                     await interaction.followup.send("🔑 Вам выдана роль подписчика.")
@@ -283,9 +293,10 @@ async def redeem_key(interaction: discord.Interaction, key: str):
         formatted_time = format_time_left(time_left)
         
         # Добавление роли подписчика
-        subscriber_role = discord.utils.get(interaction.guild.roles, name=SUBSCRIBER_ROLE_NAME)
-        if subscriber_role:
-            await interaction.user.add_roles(subscriber_role)
+        if SUBSCRIBER_ROLE_ID:
+            subscriber_role = interaction.guild.get_role(SUBSCRIBER_ROLE_ID)
+            if subscriber_role:
+                await interaction.user.add_roles(subscriber_role)
         
         await interaction.followup.send(f"✅ Ключ успешно активирован!\nСрок действия: {formatted_time}")
     else:
@@ -442,11 +453,11 @@ async def ban_user(interaction: discord.Interaction, username: str):
         db.commit()
         
         # Если у пользователя есть привязанный Discord аккаунт, удаляем роль подписчика
-        if user.discord_id:
+        if user.discord_id and SUBSCRIBER_ROLE_ID:
             try:
                 member = interaction.guild.get_member(int(user.discord_id))
                 if member:
-                    subscriber_role = discord.utils.get(interaction.guild.roles, name=SUBSCRIBER_ROLE_NAME)
+                    subscriber_role = interaction.guild.get_role(SUBSCRIBER_ROLE_ID)
                     if subscriber_role and subscriber_role in member.roles:
                         await member.remove_roles(subscriber_role)
             except Exception as e:
@@ -503,11 +514,11 @@ async def unban_user(interaction: discord.Interaction, username: str):
                     has_valid_key = True
                     break
             
-            if has_valid_key:
+            if has_valid_key and SUBSCRIBER_ROLE_ID:
                 try:
                     member = interaction.guild.get_member(int(user.discord_id))
                     if member:
-                        subscriber_role = discord.utils.get(interaction.guild.roles, name=SUBSCRIBER_ROLE_NAME)
+                        subscriber_role = interaction.guild.get_role(SUBSCRIBER_ROLE_ID)
                         if subscriber_role:
                             await member.add_roles(subscriber_role)
                 except Exception as e:

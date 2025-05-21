@@ -162,6 +162,7 @@ class GenerateKey(Resource):
         data = request.get_json()
         duration_hours = data.get("duration_hours", 24)
         target_user_id = data.get("user_id")
+        custom_key = data.get("custom_key")  # Пользовательское значение ключа
         
         db = get_db()
         
@@ -181,10 +182,25 @@ class GenerateKey(Resource):
         
         # Создание нового ключа
         key_expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
-        new_key = Key(
-            user_id=target_user_id,  # Может быть None, если ключ не привязан к пользователю
-            expires_at=key_expiry
-        )
+        
+        if custom_key:
+            # Проверяем, не существует ли уже такой ключ
+            existing_key = db.query(Key).filter(Key.key == custom_key).first()
+            if existing_key:
+                return {"message": "Ключ с таким значением уже существует"}, 400
+                
+            # Создание пользовательского ключа
+            new_key = Key(
+                key=custom_key,
+                user_id=target_user_id,
+                expires_at=key_expiry
+            )
+        else:
+            # Создание случайного ключа
+            new_key = Key(
+                user_id=target_user_id,
+                expires_at=key_expiry
+            )
         
         db.add(new_key)
         db.commit()
@@ -626,6 +642,53 @@ class AdminGetAllUsers(Resource):
             ]
         }
 
+# Добавление класса для управления модераторами
+class AdminSetRole(Resource):
+    @jwt_required()
+    def post(self, user_id):
+        current_user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что текущий пользователь является администратором
+        current_user = db.query(User).filter(User.id == current_user_id).first()
+        if not current_user or not current_user.is_admin:
+            return {"message": "Только администраторы могут управлять ролями пользователей"}, 403
+        
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Получение данных из запроса
+        data = request.get_json()
+        role_type = data.get("role", "")
+        
+        # Найти целевого пользователя
+        target_user = db.query(User).filter(User.id == user_id).first()
+        if not target_user:
+            return {"message": "Пользователь не найден"}, 404
+        
+        # Изменение роли пользователя
+        if role_type.lower() == "admin":
+            target_user.is_admin = True
+            target_user.is_support = False
+        elif role_type.lower() == "support":
+            target_user.is_admin = False
+            target_user.is_support = True
+        elif role_type.lower() == "user":
+            target_user.is_admin = False
+            target_user.is_support = False
+        else:
+            return {"message": "Неверный тип роли. Допустимые значения: admin, support, user"}, 400
+        
+        db.commit()
+        
+        return {
+            "message": f"Роль пользователя {target_user.username} изменена на {role_type}",
+            "id": target_user.id,
+            "username": target_user.username,
+            "is_admin": target_user.is_admin,
+            "is_support": target_user.is_support
+        }
+
 # Загрузка Minecraft модов
 class DownloadMod(Resource):
     @jwt_required()
@@ -673,6 +736,7 @@ api.add_resource(DiscordRedeemKey, "/api/discord/redeem-key")
 api.add_resource(AdminGetUserInfo, "/api/admin/users/<int:user_id>")
 api.add_resource(AdminBanUser, "/api/admin/users/<int:user_id>/ban")
 api.add_resource(AdminUnbanUser, "/api/admin/users/<int:user_id>/unban")
+api.add_resource(AdminSetRole, "/api/admin/users/<int:user_id>/role")
 api.add_resource(AdminGetAllUsers, "/api/admin/users")
 api.add_resource(DownloadMod, "/api/download/<string:mod_name>")
 

@@ -81,6 +81,16 @@ class Key(Base):
             return 0
         delta = self.expires_at - datetime.datetime.utcnow()
         return max(0, int(delta.total_seconds()))
+        
+    @classmethod
+    def create_custom_key(cls, key_value, user_id=None, duration_hours=24):
+        """Создает ключ с пользовательским значением"""
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
+        return cls(
+            key=key_value,
+            user_id=user_id,
+            expires_at=expires_at
+        )
 
 # Модель инвайт-кода
 class Invite(Base):

@@ -92,7 +92,8 @@ Authorization: Bearer <token>
 ```json
 {
     "duration_hours": 24,
-    "user_id": 1  // Опционально, если не указан, ключ будет свободным
+    "user_id": 1,  // Опционально, если не указан, ключ будет свободным
+    "custom_key": "XXXX-XXXX-XXXX-XXXX"  // Опционально, если не указан, будет сгенерирован случайный ключ
 }
 ```
 
@@ -301,5 +302,36 @@ POST /api/discord/redeem-key
 {
     "success": true,
     "expires_at": "2023-05-01T00:00:00Z"
+}
+```
+
+## Управление пользователями (только для администраторов)
+
+### Изменение роли пользователя
+
+```
+POST /api/admin/users/{user_id}/role
+```
+
+**Заголовки:**
+```
+Authorization: Bearer <token>
+```
+
+**Запрос:**
+```json
+{
+    "role": "admin"  // Возможные значения: "admin", "support", "user"
+}
+```
+
+**Ответ:**
+```json
+{
+    "message": "Роль пользователя user1 изменена на admin",
+    "id": 1,
+    "username": "user1",
+    "is_admin": true,
+    "is_support": false
 }
 ``` 

@@ -1,3 +1,5 @@
+"use strict";
+
 // Глобальные переменные
 let token = localStorage.getItem('token');
 let userData = null;
@@ -97,12 +99,20 @@ const api = {
     },
     
     // Генерация ключа (для админов)
-    generateKey: (duration_hours, user_id = null) => {
+    generateKey: (duration_hours, user_id = null, custom_key = null) => {
         const data = { duration_hours };
         if (user_id) {
             data.user_id = user_id;
         }
+        if (custom_key) {
+            data.custom_key = custom_key;
+        }
         return api.request('/keys/generate', 'POST', data);
+    },
+    
+    // Изменение роли пользователя (для админов)
+    setUserRole: (userId, role) => {
+        return api.request(`/admin/users/${userId}/role`, 'POST', { role });
     }
 };
 
@@ -386,6 +396,7 @@ async function loadAdminData() {
                         `<button class="btn btn-success btn-sm unban-user" data-id="${user.id}">Разблокировать</button>` :
                         `<button class="btn btn-danger btn-sm ban-user" data-id="${user.id}">Заблокировать</button>`
                     }
+                    <div class="user-role-buttons mt-1" data-user-id="${user.id}"></div>
                 </td>
             `;
             tableBody.appendChild(row);
@@ -416,12 +427,70 @@ async function loadAdminData() {
             });
         });
         
+        // Добавляем кнопки управления ролями
+        addRoleManagementButtons();
+        
         document.getElementById('users-list').style.display = 'block';
     } catch (error) {
         console.error('Ошибка при загрузке списка пользователей:', error);
     } finally {
         document.getElementById('users-loading').style.display = 'none';
     }
+}
+
+// Добавляем функции для управления ролями пользователей
+function updateUsersList() {
+    loadAdminData();
+}
+
+function addRoleManagementButtons() {
+    document.querySelectorAll('.user-role-buttons').forEach(container => {
+        const userId = container.getAttribute('data-user-id');
+        
+        // Очищаем контейнер сначала
+        container.innerHTML = '';
+        
+        // Добавляем кнопки управления ролями
+        const makeAdminBtn = document.createElement('button');
+        makeAdminBtn.className = 'btn btn-primary btn-sm mr-1';
+        makeAdminBtn.textContent = 'Админ';
+        makeAdminBtn.addEventListener('click', async () => {
+            try {
+                await api.setUserRole(userId, 'admin');
+                updateUsersList();
+            } catch (error) {
+                alert(`Ошибка при назначении администратора: ${error.message}`);
+            }
+        });
+        
+        const makeSupportBtn = document.createElement('button');
+        makeSupportBtn.className = 'btn btn-info btn-sm mr-1';
+        makeSupportBtn.textContent = 'Саппорт';
+        makeSupportBtn.addEventListener('click', async () => {
+            try {
+                await api.setUserRole(userId, 'support');
+                updateUsersList();
+            } catch (error) {
+                alert(`Ошибка при назначении саппорта: ${error.message}`);
+            }
+        });
+        
+        const makeUserBtn = document.createElement('button');
+        makeUserBtn.className = 'btn btn-secondary btn-sm';
+        makeUserBtn.textContent = 'Юзер';
+        makeUserBtn.addEventListener('click', async () => {
+            try {
+                await api.setUserRole(userId, 'user');
+                updateUsersList();
+            } catch (error) {
+                alert(`Ошибка при сбросе роли: ${error.message}`);
+            }
+        });
+        
+        container.appendChild(makeAdminBtn);
+        container.appendChild(makeSupportBtn);
+        container.appendChild(makeUserBtn);
+    });
 }
 
 // Инициализация приложения
@@ -577,12 +646,13 @@ async function initApp() {
         const duration = parseInt(document.getElementById('key-duration').value);
         const userIdValue = document.getElementById('key-user').value;
         const userId = userIdValue ? parseInt(userIdValue) : null;
+        const customKey = document.getElementById('key-custom').value.trim();
         
         document.getElementById('generate-key-error').style.display = 'none';
         document.getElementById('generate-key-success').style.display = 'none';
         
         try {
-            const result = await api.generateKey(duration, userId);
+            const result = await api.generateKey(duration, userId, customKey || null);
             
             document.getElementById('generated-key').textContent = result.key;
             document.getElementById('generate-key-success').style.display = 'block';
