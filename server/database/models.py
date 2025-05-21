@@ -18,7 +18,26 @@ DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "loader_alpha")
 
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# URL для PostgreSQL
+PG_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# URL для SQLite (запасной вариант)
+SQLITE_DATABASE_URL = "sqlite:///./database.db"
+
+# Сначала пробуем использовать PostgreSQL, если не получится - используем SQLite
+try:
+    # Пробуем создать движок PostgreSQL
+    engine = create_engine(PG_DATABASE_URL)
+    # Пробуем подключиться
+    conn = engine.connect()
+    conn.close()
+    DATABASE_URL = PG_DATABASE_URL
+    print("Подключение к PostgreSQL успешно установлено")
+except Exception as e:
+    print(f"Не удалось подключиться к PostgreSQL: {str(e)}. Используем SQLite.")
+    # Используем SQLite
+    DATABASE_URL = SQLITE_DATABASE_URL
+    engine = create_engine(SQLITE_DATABASE_URL, connect_args={"check_same_thread": False})
 
 # Создание базового класса для моделей
 Base = declarative_base()
@@ -155,7 +174,6 @@ class RoleLimits(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 # Создание соединения с базой данных
-engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Функция для получения сессии базы данных
