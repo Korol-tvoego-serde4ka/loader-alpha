@@ -36,6 +36,37 @@ def get_db():
     finally:
         db.close()
 
+# Функция для получения реального IP-адреса
+def get_client_ip():
+    """Получает реальный IP-адрес клиента, проверяя различные заголовки и request.remote_addr"""
+    if request.environ.get('HTTP_X_FORWARDED_FOR'):
+        # X-Forwarded-For содержит список IP-адресов, первый - это исходный клиент
+        ip = request.environ['HTTP_X_FORWARDED_FOR'].split(',')[0].strip()
+    elif request.environ.get('HTTP_X_REAL_IP'):
+        ip = request.environ['HTTP_X_REAL_IP']
+    elif request.headers.get('X-Forwarded-For'):
+        ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    elif request.headers.get('X-Real-IP'):
+        ip = request.headers.get('X-Real-IP')
+    else:
+        # Если нет заголовков прокси, используем стандартный remote_addr
+        ip = request.remote_addr
+    
+    # Если IP не определен или localhost, попробуем использовать внешний IP
+    if not ip or ip == '127.0.0.1' or ip == 'localhost' or ip == '::1':
+        try:
+            # В режиме разработки запрашиваем внешний IP через сервис
+            # Это нужно только для тестирования
+            import urllib.request
+            external_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
+            if external_ip and external_ip != '127.0.0.1':
+                ip = external_ip
+        except:
+            # В случае ошибки оставляем исходный IP
+            pass
+    
+    return ip
+
 # Функция для хеширования пароля
 def hash_password(password):
     return pwd_context.hash(password)
@@ -66,7 +97,7 @@ class Login(Resource):
             return {"message": "Ваш аккаунт заблокирован"}, 403
         
         # Обновление информации о последнем входе
-        ip_address = request.remote_addr
+        ip_address = get_client_ip()
         user.update_login_info(ip_address)
         db.commit()
         
@@ -109,7 +140,7 @@ class Register(Resource):
         )
         
         # Сохранение IP-адреса регистрации
-        ip_address = request.remote_addr
+        ip_address = get_client_ip()
         new_user.update_login_info(ip_address)
         
         db.add(new_user)
@@ -473,7 +504,7 @@ class VerifyDiscordCode(Resource):
         user.discord_username = discord_username
         
         # Обновление информации о входе
-        ip_address = request.remote_addr
+        ip_address = get_client_ip()
         user.update_login_info(ip_address)
         
         # Пометить код как использованный
@@ -524,7 +555,7 @@ class DiscordRedeemKey(Resource):
             key.activated_at = datetime.datetime.utcnow()
         
         # Обновление информации о входе
-        ip_address = request.remote_addr
+        ip_address = get_client_ip()
         user.update_login_info(ip_address)
         
         db.commit()

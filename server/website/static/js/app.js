@@ -162,6 +162,21 @@ const utils = {
         } else {
             return 'Пользователь';
         }
+    },
+    
+    // Форматирование IP-адреса
+    formatIpAddress: (ip) => {
+        if (!ip) return 'Неизвестно';
+        
+        // Проверка на локальные IP-адреса
+        if (ip === '127.0.0.1' || ip === 'localhost' || ip === '::1') {
+            return `${ip} (Локальный адрес)`;
+        } else if (ip.startsWith('192.168.') || ip.startsWith('10.') || 
+                  (ip.startsWith('172.') && parseInt(ip.split('.')[1]) >= 16 && parseInt(ip.split('.')[1]) <= 31)) {
+            return `${ip} (Внутренняя сеть)`;
+        } else {
+            return ip; // Внешний IP-адрес
+        }
     }
 };
 
@@ -398,7 +413,7 @@ async function loadAdminData() {
                 <td>${discordStatus}</td>
                 <td>${status}</td>
                 <td>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Никогда'}</td>
-                <td>${user.last_ip || 'Неизвестно'}</td>
+                <td>${utils.formatIpAddress(user.last_ip)}</td>
                 <td>
                     ${user.is_banned ? 
                         `<button class="btn btn-success btn-sm unban-user" data-id="${user.id}">Разблокировать</button>` :
