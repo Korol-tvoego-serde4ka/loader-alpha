@@ -33,16 +33,20 @@ postgres=# \q
 
 4. Настройте переменные окружения (создайте .env файл):
 ```
-DB_NAME=loader_alpha
-DB_USER=loader_user
-DB_PASSWORD=your_password
-DB_HOST=localhost
-DB_PORT=5432
-SECRET_KEY=your_secret_key
-DISCORD_TOKEN=your_discord_bot_token
-DISCORD_CLIENT_ID=your_discord_client_id
-DISCORD_CLIENT_SECRET=your_discord_client_secret
-DISCORD_REDIRECT_URI=http://your-domain.com/auth/discord/callback
+   DB_NAME=loader_alpha
+   DB_USER=loader_user
+   DB_PASSWORD=your_secure_password
+   DB_HOST=localhost
+   DB_PORT=5432
+   SECRET_KEY=your_secret_key_for_jwt
+   DISCORD_TOKEN=your_discord_bot_token
+   DISCORD_CLIENT_ID=your_discord_app_id
+   DISCORD_CLIENT_SECRET=your_discord_app_secret
+   DISCORD_REDIRECT_URI=http://your-domain.com/auth/discord/callback
+   SERVER_API_URL=http://localhost:5000/api
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD=admin_password
+   ADMIN_EMAIL=admin@example.com
 ```
 
 5. Инициализируйте базу данных:
@@ -175,4 +179,20 @@ sudo systemctl start loader-discord-bot.service
 ```bash
 sudo systemctl status loader-website.service
 sudo systemctl status loader-discord-bot.service
-``` 
+```
+
+### Установка PostgreSQL
+```bash
+# Для Ubuntu 20.04
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+```
+
+### Настройка Discord бота
+1. Перейдите на [Discord Developer Portal](https://discord.com/developers/applications)
+2. Создайте новое приложение
+3. В разделе "Bot" создайте бота и скопируйте токен
+4. В разделе "OAuth2" добавьте redirect URL
+5. Включите интенты: Message Content, Server Members 
