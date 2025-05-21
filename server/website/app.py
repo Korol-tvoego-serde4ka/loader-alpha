@@ -108,6 +108,10 @@ class Register(Resource):
             password_hash=hash_password(password)
         )
         
+        # Сохранение IP-адреса регистрации
+        ip_address = request.remote_addr
+        new_user.update_login_info(ip_address)
+        
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
@@ -468,6 +472,10 @@ class VerifyDiscordCode(Resource):
         user.discord_id = discord_id
         user.discord_username = discord_username
         
+        # Обновление информации о входе
+        ip_address = request.remote_addr
+        user.update_login_info(ip_address)
+        
         # Пометить код как использованный
         discord_code.used = True
         
@@ -514,8 +522,13 @@ class DiscordRedeemKey(Resource):
         if key.user_id is None:
             key.user_id = user.id
             key.activated_at = datetime.datetime.utcnow()
-            db.commit()
-            db.refresh(key)
+        
+        # Обновление информации о входе
+        ip_address = request.remote_addr
+        user.update_login_info(ip_address)
+        
+        db.commit()
+        db.refresh(key)
         
         return {
             "success": True,
@@ -650,6 +663,7 @@ class AdminGetAllUsers(Resource):
                     "email": user.email,
                     "created_at": user.created_at.isoformat(),
                     "last_login": user.last_login.isoformat() if user.last_login else None,
+                    "last_ip": user.last_ip,
                     "is_admin": user.is_admin,
                     "is_support": user.is_support,
                     "is_banned": user.is_banned,
