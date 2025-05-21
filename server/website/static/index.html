@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Minecraft Loader Alpha</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
     <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
 </head>
@@ -17,20 +18,23 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav mr-auto">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="#">Главная</a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#home">Главная</a>
                     </li>
-                    <li class="nav-item" id="nav-keys">
-                        <a class="nav-link" href="#keys">Мои ключи</a>
+                    <li class="nav-item" id="keys-nav" style="display: none;">
+                        <a class="nav-link" href="#keys">Ключи</a>
                     </li>
-                    <li class="nav-item" id="nav-invites">
+                    <li class="nav-item" id="invites-nav" style="display: none;">
                         <a class="nav-link" href="#invites">Приглашения</a>
                     </li>
-                    <li class="nav-item" id="nav-discord">
+                    <li class="nav-item" id="discord-nav" style="display: none;">
                         <a class="nav-link" href="#discord">Discord</a>
                     </li>
-                    <li class="nav-item" id="nav-admin" style="display: none;">
-                        <a class="nav-link" href="#admin">Администрирование</a>
+                    <li class="nav-item" id="admin-nav" style="display: none;">
+                        <a class="nav-link" href="#admin">Админ-панель</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#docs">Документация</a>
                     </li>
                 </ul>
                 <div class="navbar-nav" id="login-buttons">
@@ -40,6 +44,13 @@
                 <div class="navbar-nav" id="user-info" style="display: none;">
                     <span class="nav-link" id="username-display"></span>
                     <a class="nav-link" href="#" id="logout-button">Выход</a>
+                </div>
+                <div class="theme-switch-wrapper">
+                    <span class="theme-icon"><i class="fas fa-moon"></i></span>
+                    <label class="theme-switch" for="theme-checkbox">
+                        <input type="checkbox" id="theme-checkbox" />
+                        <span class="slider round"></span>
+                    </label>
                 </div>
             </div>
         </div>
@@ -142,6 +153,11 @@
                                 <div class="form-group">
                                     <label for="register-password">Пароль</label>
                                     <input type="password" class="form-control" id="register-password" required>
+                                    <div id="password-strength" style="display: none;"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="register-confirm-password">Подтвердите пароль</label>
+                                    <input type="password" class="form-control" id="register-confirm-password" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="register-invite">Код приглашения</label>
@@ -171,6 +187,9 @@
                     <h4>Активные ключи</h4>
                 </div>
                 <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control form-control-sm" id="keys-search" placeholder="Поиск ключей...">
+                    </div>
                     <div id="keys-loading" class="text-center">
                         <div class="spinner-border text-light" role="status">
                             <span class="sr-only">Загрузка...</span>
@@ -181,7 +200,7 @@
                     </div>
                     <div id="keys-list" style="display: none;">
                         <div class="table-responsive">
-                            <table class="table table-dark table-compact">
+                            <table class="table table-dark table-compact" id="keys-table">
                                 <thead>
                                     <tr>
                                         <th>Ключ</th>
@@ -194,6 +213,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div id="keys-pagination" class="mt-3"></div>
                     </div>
                 </div>
             </div>
@@ -266,6 +286,14 @@
                     <h4>Мои приглашения</h4>
                 </div>
                 <div class="card-body">
+                    <div class="mb-3 d-flex">
+                        <div class="flex-grow-1 mr-2">
+                            <input type="text" class="form-control form-control-sm" id="invites-search" placeholder="Поиск приглашений...">
+                        </div>
+                        <button class="btn btn-sm btn-outline-light" id="export-invites-btn">
+                            <i class="fas fa-download"></i> Экспорт
+                        </button>
+                    </div>
                     <div id="invites-loading" class="text-center">
                         <div class="spinner-border text-light" role="status">
                             <span class="sr-only">Загрузка...</span>
@@ -276,7 +304,7 @@
                     </div>
                     <div id="invites-list" style="display: none;">
                         <div class="table-responsive">
-                            <table class="table table-dark table-compact">
+                            <table class="table table-dark table-compact" id="invites-table">
                                 <thead>
                                     <tr>
                                         <th><input type="checkbox" id="select-all-invites" title="Выбрать все"></th>
@@ -293,6 +321,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div id="invites-pagination" class="mt-3"></div>
                     </div>
                 </div>
                 <div class="card-footer">
@@ -420,6 +449,29 @@
                             <h4>Список пользователей</h4>
                         </div>
                         <div class="card-body">
+                            <div class="mb-3 d-flex">
+                                <div class="flex-grow-1 mr-2">
+                                    <input type="text" class="form-control form-control-sm" id="users-search" placeholder="Поиск пользователей...">
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="columnsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Колонки
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="columnsDropdown">
+                                        <a class="dropdown-item toggle-column" data-table="users" data-column="0">ID</a>
+                                        <a class="dropdown-item toggle-column" data-table="users" data-column="1">Имя пользователя</a>
+                                        <a class="dropdown-item toggle-column" data-table="users" data-column="2">Email</a>
+                                        <a class="dropdown-item toggle-column" data-table="users" data-column="3">Роль</a>
+                                        <a class="dropdown-item toggle-column" data-table="users" data-column="4">Discord</a>
+                                        <a class="dropdown-item toggle-column" data-table="users" data-column="5">Статус</a>
+                                        <a class="dropdown-item toggle-column" data-table="users" data-column="6">Последний вход</a>
+                                        <a class="dropdown-item toggle-column" data-table="users" data-column="7">IP-адрес</a>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-light ml-2" id="export-users-btn">
+                                    <i class="fas fa-download"></i> Экспорт
+                                </button>
+                            </div>
                             <div id="users-loading" class="text-center">
                                 <div class="spinner-border text-light" role="status">
                                     <span class="sr-only">Загрузка...</span>
@@ -427,7 +479,7 @@
                             </div>
                             <div id="users-list" style="display: none;">
                                 <div class="table-responsive">
-                                    <table class="table table-dark table-compact">
+                                    <table class="table table-dark table-compact" id="users-table">
                                         <thead>
                                             <tr>
                                                 <th>ID</th>
@@ -445,6 +497,7 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <div id="users-pagination" class="mt-3"></div>
                             </div>
                         </div>
                     </div>
@@ -486,6 +539,28 @@
                             <h4>Все ключи</h4>
                         </div>
                         <div class="card-body">
+                            <div class="mb-3 d-flex">
+                                <div class="flex-grow-1 mr-2">
+                                    <input type="text" class="form-control form-control-sm" id="all-keys-search" placeholder="Поиск ключей...">
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="allKeysColumnsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Колонки
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="allKeysColumnsDropdown">
+                                        <a class="dropdown-item toggle-column" data-table="all-keys" data-column="1">ID</a>
+                                        <a class="dropdown-item toggle-column" data-table="all-keys" data-column="2">Ключ</a>
+                                        <a class="dropdown-item toggle-column" data-table="all-keys" data-column="3">Создан</a>
+                                        <a class="dropdown-item toggle-column" data-table="all-keys" data-column="4">Истекает</a>
+                                        <a class="dropdown-item toggle-column" data-table="all-keys" data-column="5">Остаток времени</a>
+                                        <a class="dropdown-item toggle-column" data-table="all-keys" data-column="6">Владелец</a>
+                                        <a class="dropdown-item toggle-column" data-table="all-keys" data-column="7">Статус</a>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-light ml-2" id="export-all-keys-btn">
+                                    <i class="fas fa-download"></i> Экспорт
+                                </button>
+                            </div>
                             <div id="all-keys-loading" class="text-center">
                                 <div class="spinner-border text-light" role="status">
                                     <span class="sr-only">Загрузка...</span>
@@ -498,7 +573,7 @@
                                     <button id="delete-selected-keys-button" class="btn btn-dark btn-sm ml-2">Удалить выбранные</button>
                                 </div>
                                 <div class="table-responsive">
-                                    <table class="table table-dark table-compact">
+                                    <table class="table table-dark table-compact" id="all-keys-table">
                                         <thead>
                                             <tr>
                                                 <th><input type="checkbox" id="select-all-keys" title="Выбрать все"></th>
@@ -515,6 +590,299 @@
                                         <tbody id="all-keys-table-body">
                                         </tbody>
                                     </table>
+                                </div>
+                                <div id="all-keys-pagination" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Документация -->
+        <div class="container mt-4" id="docs-page" style="display: none;">
+            <div class="card bg-secondary">
+                <div class="card-header">
+                    <h3>Документация</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="docsTab" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="usage-tab" data-toggle="tab" href="#usage" role="tab" aria-controls="usage" aria-selected="true">Использование</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="api-tab" data-toggle="tab" href="#api" role="tab" aria-controls="api" aria-selected="false">API</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="faq-tab" data-toggle="tab" href="#faq" role="tab" aria-controls="faq" aria-selected="false">FAQ</a>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3" id="docsTabContent">
+                        <div class="tab-pane fade show active" id="usage" role="tabpanel" aria-labelledby="usage-tab">
+                            <h4>Руководство пользователя</h4>
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h5>Начало работы</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Для начала работы с системой вам необходимо:</p>
+                                    <ol>
+                                        <li>Получить <strong>пригласительный код</strong> от существующего пользователя</li>
+                                        <li>Зарегистрироваться, используя полученный код</li>
+                                        <li>Активировать <strong>ключ</strong> для получения доступа к лоадеру</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h5>Управление ключами</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>В разделе <strong>Ключи</strong> вы можете:</p>
+                                    <ul>
+                                        <li>Видеть все свои активные ключи</li>
+                                        <li>Активировать новый ключ, используя форму активации</li>
+                                        <li>Отслеживать оставшееся время действия ключей</li>
+                                    </ul>
+                                    <p>Каждый ключ имеет ограниченный срок действия. Когда срок истекает, вам потребуется активировать новый ключ.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h5>Приглашения</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>В разделе <strong>Приглашения</strong> вы можете:</p>
+                                    <ul>
+                                        <li>Создавать приглашения для новых пользователей</li>
+                                        <li>Отслеживать статус выданных приглашений</li>
+                                        <li>Видеть, кто использовал ваши приглашения</li>
+                                    </ul>
+                                    <p>У каждого пользователя есть лимит на количество приглашений, которые можно создать в месяц. Лимит зависит от вашей роли в системе.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h5>Интеграция с Discord</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>В разделе <strong>Discord</strong> вы можете связать свой аккаунт с Discord для получения дополнительных возможностей:</p>
+                                    <ol>
+                                        <li>Сгенерируйте код привязки на сайте</li>
+                                        <li>Используйте команду <code>/code &lt;ваш_код&gt;</code> в нашем Discord-сервере</li>
+                                        <li>После успешной привязки вы сможете использовать дополнительные команды бота</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Администрирование</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Если у вас есть права администратора или поддержки, вы получаете доступ к дополнительным функциям:</p>
+                                    <ul>
+                                        <li><strong>Администраторы</strong> имеют полный доступ ко всем разделам и функциям системы, включая управление пользователями, ключами и настройками</li>
+                                        <li><strong>Поддержка</strong> имеет доступ к управлению ключами и ограниченный доступ к управлению пользователями</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="api" role="tabpanel" aria-labelledby="api-tab">
+                            <h4>API документация</h4>
+                            <p>Наш сервис предоставляет REST API для интеграции с другими системами.</p>
+                            
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h5>Аутентификация</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Все API запросы должны содержать JWT токен в заголовке <code>Authorization</code>:</p>
+                                    <pre><code>Authorization: Bearer YOUR_TOKEN</code></pre>
+                                    <p>Для получения токена используйте метод <code>/api/auth/login</code>.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h5>Основные точки API</h5>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-dark table-compact">
+                                        <thead>
+                                            <tr>
+                                                <th>Метод</th>
+                                                <th>Путь</th>
+                                                <th>Описание</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>POST</td>
+                                                <td><code>/api/auth/login</code></td>
+                                                <td>Вход в систему и получение токена</td>
+                                            </tr>
+                                            <tr>
+                                                <td>POST</td>
+                                                <td><code>/api/auth/register</code></td>
+                                                <td>Регистрация нового пользователя</td>
+                                            </tr>
+                                            <tr>
+                                                <td>GET</td>
+                                                <td><code>/api/user</code></td>
+                                                <td>Получение информации о текущем пользователе</td>
+                                            </tr>
+                                            <tr>
+                                                <td>GET</td>
+                                                <td><code>/api/keys</code></td>
+                                                <td>Получение списка ключей пользователя</td>
+                                            </tr>
+                                            <tr>
+                                                <td>POST</td>
+                                                <td><code>/api/keys/redeem</code></td>
+                                                <td>Активация ключа</td>
+                                            </tr>
+                                            <tr>
+                                                <td>GET</td>
+                                                <td><code>/api/invites</code></td>
+                                                <td>Получение списка приглашений пользователя</td>
+                                            </tr>
+                                            <tr>
+                                                <td>POST</td>
+                                                <td><code>/api/invites/generate</code></td>
+                                                <td>Создание нового приглашения</td>
+                                            </tr>
+                                            <tr>
+                                                <td>GET</td>
+                                                <td><code>/api/discord/status</code></td>
+                                                <td>Получение статуса привязки Discord</td>
+                                            </tr>
+                                            <tr>
+                                                <td>POST</td>
+                                                <td><code>/api/discord/generate</code></td>
+                                                <td>Генерация кода привязки Discord</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Примеры использования API</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Пример авторизации и получения списка ключей:</p>
+                                    <pre><code>// Авторизация
+fetch('/api/auth/login', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        username: 'user',
+        password: 'password'
+    })
+})
+.then(response => response.json())
+.then(data => {
+    const token = data.token;
+    
+    // Получение списка ключей
+    return fetch('/api/keys', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+})
+.then(response => response.json())
+.then(keys => console.log(keys))
+.catch(error => console.error(error));</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="faq" role="tabpanel" aria-labelledby="faq-tab">
+                            <h4>Часто задаваемые вопросы</h4>
+                            
+                            <div class="accordion" id="faqAccordion">
+                                <div class="card mb-2">
+                                    <div class="card-header" id="faqOne">
+                                        <h5 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                                Как получить приглашение для регистрации?
+                                            </button>
+                                        </h5>
+                                    </div>
+                                    <div id="collapseOne" class="collapse" aria-labelledby="faqOne" data-parent="#faqAccordion">
+                                        <div class="card-body">
+                                            Приглашения могут выдавать только существующие участники системы. Вы можете получить приглашение у друга, который уже является пользователем, или обратиться к администратору в Discord-сервере.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-2">
+                                    <div class="card-header" id="faqTwo">
+                                        <h5 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                                Как активировать ключ для доступа к лоадеру?
+                                            </button>
+                                        </h5>
+                                    </div>
+                                    <div id="collapseTwo" class="collapse" aria-labelledby="faqTwo" data-parent="#faqAccordion">
+                                        <div class="card-body">
+                                            Для активации ключа перейдите в раздел "Ключи" и используйте форму активации ключа. Введите ключ, который вы получили, и нажмите кнопку "Активировать". После успешной активации ключ появится в списке ваших активных ключей.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-2">
+                                    <div class="card-header" id="faqThree">
+                                        <h5 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                                Что делать, если ключ перестал работать?
+                                            </button>
+                                        </h5>
+                                    </div>
+                                    <div id="collapseThree" class="collapse" aria-labelledby="faqThree" data-parent="#faqAccordion">
+                                        <div class="card-body">
+                                            Ключи имеют ограниченный срок действия. Если ваш ключ истек, вам потребуется активировать новый ключ. Если ключ не работает, хотя срок его действия еще не истек, обратитесь в службу поддержки через Discord.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-2">
+                                    <div class="card-header" id="faqFour">
+                                        <h5 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                                Как связать аккаунт с Discord?
+                                            </button>
+                                        </h5>
+                                    </div>
+                                    <div id="collapseFour" class="collapse" aria-labelledby="faqFour" data-parent="#faqAccordion">
+                                        <div class="card-body">
+                                            Для связывания аккаунта с Discord перейдите в раздел "Discord" на сайте и сгенерируйте код привязки. Затем используйте команду <code>/code &lt;ваш_код&gt;</code> в нашем Discord-сервере. После успешной привязки вы сможете использовать дополнительные команды бота и получать уведомления.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-2">
+                                    <div class="card-header" id="faqFive">
+                                        <h5 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                                                Как создать приглашение для друга?
+                                            </button>
+                                        </h5>
+                                    </div>
+                                    <div id="collapseFive" class="collapse" aria-labelledby="faqFive" data-parent="#faqAccordion">
+                                        <div class="card-body">
+                                            Для создания приглашения перейдите в раздел "Приглашения" и нажмите кнопку "Создать приглашение". Новое приглашение будет добавлено в список ваших приглашений. Вы можете скопировать код и отправить его другу. Обратите внимание, что у каждого пользователя есть ежемесячный лимит на количество создаваемых приглашений.
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
