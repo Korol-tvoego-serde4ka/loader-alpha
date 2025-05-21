@@ -1119,6 +1119,116 @@ class AdminRevokeKey(Resource):
             # Возвращаем ошибку в формате JSON
             return {"message": f"Ошибка при отзыве ключа: {str(e)}"}, 500
 
+class AdminCleanupKeys(Resource):
+    @jwt_required()
+    def post(self):
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для очистки базы данных"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Получение параметров очистки
+            data = request.get_json()
+            cleanup_expired = data.get("cleanup_expired", True)  # Удалять истекшие ключи
+            cleanup_revoked = data.get("cleanup_revoked", True)  # Удалять отозванные ключи
+            older_than_days = data.get("older_than_days", 30)  # Ключи старше N дней
+            
+            # Вычисление даты для фильтрации по возрасту
+            cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(days=older_than_days)
+            
+            # Построение запроса на основе параметров
+            query = db.query(Key).filter(Key.created_at < cutoff_date)
+            
+            if cleanup_expired and cleanup_revoked:
+                # Очистка и истекших, и отозванных ключей
+                query = query.filter((Key.expires_at < datetime.datetime.utcnow()) | (Key.is_active == False))
+            elif cleanup_expired:
+                # Очистка только истекших ключей
+                query = query.filter(Key.expires_at < datetime.datetime.utcnow())
+            elif cleanup_revoked:
+                # Очистка только отозванных ключей
+                query = query.filter(Key.is_active == False)
+            else:
+                # Если не выбрано ни одного параметра
+                return {"message": "Не выбраны параметры очистки"}, 400
+            
+            # Получаем количество удаляемых ключей
+            keys_count = query.count()
+            
+            # Выполняем удаление
+            query.delete(synchronize_session=False)
+            db.commit()
+            
+            return {
+                "message": f"Очистка выполнена успешно. Удалено ключей: {keys_count}",
+                "deleted_count": keys_count
+            }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при очистке базы данных: {str(e)}")
+            db.rollback()
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при очистке базы данных: {str(e)}"}, 500
+
+class AdminGetCleanupStats(Resource):
+    @jwt_required()
+    def get(self):
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для просмотра статистики"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Получение статистики по истекшим и отозванным ключам
+            # Истекшие ключи: expires_at < now
+            expired_count = db.query(Key).filter(Key.expires_at < datetime.datetime.utcnow()).count()
+            
+            # Отозванные ключи: is_active = False
+            revoked_count = db.query(Key).filter(Key.is_active == False).count()
+            
+            # Общее количество ключей
+            total_count = db.query(Key).count()
+            
+            # Статистика по возрасту ключей
+            # Старше 30 дней
+            cutoff_date_30 = datetime.datetime.utcnow() - datetime.timedelta(days=30)
+            older_than_30_days = db.query(Key).filter(Key.created_at < cutoff_date_30).count()
+            
+            # Старше 90 дней
+            cutoff_date_90 = datetime.datetime.utcnow() - datetime.timedelta(days=90)
+            older_than_90_days = db.query(Key).filter(Key.created_at < cutoff_date_90).count()
+            
+            # Старше 180 дней
+            cutoff_date_180 = datetime.datetime.utcnow() - datetime.timedelta(days=180)
+            older_than_180_days = db.query(Key).filter(Key.created_at < cutoff_date_180).count()
+            
+            return {
+                "total_keys": total_count,
+                "expired_keys": expired_count,
+                "revoked_keys": revoked_count,
+                "older_than_30_days": older_than_30_days,
+                "older_than_90_days": older_than_90_days,
+                "older_than_180_days": older_than_180_days
+            }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при получении статистики: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при получении статистики: {str(e)}"}, 500
+
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
 api.add_resource(Register, "/api/users/register")
@@ -1145,6 +1255,8 @@ api.add_resource(DownloadMod, "/api/download/<string:mod_name>")
 api.add_resource(AdminDeleteMultipleInvites, "/api/admin/invites/delete")
 api.add_resource(AdminGetAllKeys, "/api/admin/keys")
 api.add_resource(AdminRevokeKey, "/api/admin/keys/<int:key_id>/revoke")
+api.add_resource(AdminCleanupKeys, "/api/admin/keys/cleanup")
+api.add_resource(AdminGetCleanupStats, "/api/admin/keys/stats")
 
 # Основной маршрут для одностраничного приложения
 @app.route('/', defaults={'path': ''})
