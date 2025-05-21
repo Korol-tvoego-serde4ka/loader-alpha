@@ -78,6 +78,25 @@ const api = {
         return api.request('/invites/generate', 'POST');
     },
     
+    // Получение лимитов инвайтов
+    getInviteLimits: () => {
+        return api.request('/invites/limits');
+    },
+    
+    // Удаление инвайта (для админов)
+    deleteInvite: (inviteId) => {
+        return api.request(`/admin/invites/${inviteId}/delete`, 'POST');
+    },
+    
+    // Установка лимитов инвайтов (для админов)
+    setInviteLimits: (adminLimit, supportLimit, userLimit) => {
+        return api.request('/admin/invites/limits', 'POST', {
+            admin_limit: adminLimit,
+            support_limit: supportLimit,
+            user_limit: userLimit
+        });
+    },
+    
     // Генерация кода для привязки Discord
     generateDiscordCode: () => {
         return api.request('/users/discord-code', 'POST');
@@ -330,11 +349,36 @@ async function loadInvites() {
     document.getElementById('invites-loading').style.display = 'block';
     document.getElementById('no-invites').style.display = 'none';
     document.getElementById('invites-list').style.display = 'none';
+    document.getElementById('invite-limits').style.display = 'none';
+    document.getElementById('admin-invite-limits').style.display = 'none';
     
     try {
-        const invitesData = await api.getInvites();
+        // Загрузка инвайтов и лимитов одновременно
+        const [invitesData, limitsData] = await Promise.all([
+            api.getInvites(),
+            api.getInviteLimits()
+        ]);
+        
         const invites = invitesData.invites;
         
+        // Отображение информации о лимитах
+        document.getElementById('monthly-limit').textContent = limitsData.monthly_limit;
+        document.getElementById('used-invites').textContent = limitsData.used_invites;
+        document.getElementById('remaining-invites').textContent = limitsData.remaining_invites;
+        document.getElementById('invite-limits').style.display = 'block';
+        
+        // Отображение панели управления лимитами для админов
+        if (userData && userData.is_admin) {
+            document.getElementById('admin-limit-value').value = limitsData.global_limits.admin;
+            document.getElementById('support-limit-value').value = limitsData.global_limits.support;
+            document.getElementById('user-limit-value').value = limitsData.global_limits.user;
+            document.getElementById('admin-invite-limits').style.display = 'block';
+            document.getElementById('invites-actions-header').style.display = 'table-cell';
+        } else {
+            document.getElementById('invites-actions-header').style.display = 'none';
+        }
+        
+        // Проверка, есть ли инвайты для отображения
         if (invites.length === 0) {
             document.getElementById('no-invites').style.display = 'block';
         } else {
@@ -344,12 +388,37 @@ async function loadInvites() {
             invites.forEach(invite => {
                 const row = document.createElement('tr');
                 const status = invite.used ? 'Использован' : 'Активен';
+                
+                // Добавляем информацию об инвайте
                 row.innerHTML = `
                     <td>${invite.code}</td>
                     <td>${utils.formatDate(invite.created_at)}</td>
                     <td>${utils.formatDate(invite.expires_at)}</td>
                     <td>${status}</td>
+                    <td>${invite.created_by.username}</td>
+                    <td>${invite.used_by ? invite.used_by : 'Не использован'}</td>
                 `;
+                
+                // Добавляем кнопку удаления для админов
+                if (userData && userData.is_admin) {
+                    const actionCell = document.createElement('td');
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'btn btn-danger btn-sm';
+                    deleteButton.textContent = 'Удалить';
+                    deleteButton.addEventListener('click', async () => {
+                        if (confirm('Вы уверены, что хотите удалить этот инвайт?')) {
+                            try {
+                                await api.deleteInvite(invite.id);
+                                loadInvites(); // Перезагрузка списка после удаления
+                            } catch (error) {
+                                alert(`Ошибка при удалении инвайта: ${error.message}`);
+                            }
+                        }
+                    });
+                    actionCell.appendChild(deleteButton);
+                    row.appendChild(actionCell);
+                }
+                
                 tableBody.appendChild(row);
             });
             
@@ -647,6 +716,31 @@ async function initApp() {
             loadInvites();
         } catch (error) {
             alert(`Ошибка создания приглашения: ${error.message}`);
+        }
+    });
+    
+    // Форма установки лимитов приглашений
+    document.getElementById('set-invite-limits-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const adminLimit = parseInt(document.getElementById('admin-limit-value').value);
+        const supportLimit = parseInt(document.getElementById('support-limit-value').value);
+        const userLimit = parseInt(document.getElementById('user-limit-value').value);
+        
+        document.getElementById('set-limits-error').style.display = 'none';
+        document.getElementById('set-limits-success').style.display = 'none';
+        
+        try {
+            await api.setInviteLimits(adminLimit, supportLimit, userLimit);
+            document.getElementById('set-limits-success').style.display = 'block';
+            
+            // Перезагрузка данных
+            setTimeout(() => {
+                loadInvites();
+            }, 2000);
+        } catch (error) {
+            document.getElementById('set-limits-error').textContent = error.message;
+            document.getElementById('set-limits-error').style.display = 'block';
         }
     });
     

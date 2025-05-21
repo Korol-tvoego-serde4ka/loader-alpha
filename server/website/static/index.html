@@ -221,6 +221,44 @@
                 Вы можете создать приглашения для новых пользователей. Срок действия приглашения - 30 дней.
             </div>
             
+            <!-- Информация о лимитах инвайтов -->
+            <div class="card bg-secondary mb-4" id="invite-limits" style="display: none;">
+                <div class="card-header">
+                    <h4>Лимиты приглашений</h4>
+                </div>
+                <div class="card-body">
+                    <p>Ваш лимит приглашений в месяц: <span id="monthly-limit">0</span></p>
+                    <p>Использовано в этом месяце: <span id="used-invites">0</span></p>
+                    <p>Осталось в этом месяце: <span id="remaining-invites">0</span></p>
+                </div>
+            </div>
+            
+            <!-- Управление лимитами (для админов) -->
+            <div class="card bg-secondary mb-4" id="admin-invite-limits" style="display: none;">
+                <div class="card-header">
+                    <h4>Управление лимитами приглашений</h4>
+                </div>
+                <div class="card-body">
+                    <form id="set-invite-limits-form">
+                        <div class="form-group">
+                            <label for="admin-limit-value">Лимит для администраторов:</label>
+                            <input type="number" class="form-control" id="admin-limit-value" min="0" value="999">
+                        </div>
+                        <div class="form-group">
+                            <label for="support-limit-value">Лимит для саппортов:</label>
+                            <input type="number" class="form-control" id="support-limit-value" min="0" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="user-limit-value">Лимит для пользователей:</label>
+                            <input type="number" class="form-control" id="user-limit-value" min="0" value="0">
+                        </div>
+                        <div class="alert alert-danger" id="set-limits-error" style="display: none;"></div>
+                        <div class="alert alert-success" id="set-limits-success" style="display: none;">Лимиты успешно обновлены</div>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </form>
+                </div>
+            </div>
+            
             <div class="card bg-secondary mb-4">
                 <div class="card-header">
                     <h4>Мои приглашения</h4>
@@ -242,6 +280,9 @@
                                     <th>Создан</th>
                                     <th>Истекает</th>
                                     <th>Статус</th>
+                                    <th>Создатель</th>
+                                    <th>Использован</th>
+                                    <th id="invites-actions-header" style="display: none;">Действия</th>
                                 </tr>
                             </thead>
                             <tbody id="invites-table-body">

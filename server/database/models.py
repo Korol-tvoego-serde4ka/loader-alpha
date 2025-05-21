@@ -67,7 +67,7 @@ class User(Base):
         
     def can_create_invite(self):
         """Проверяет, может ли пользователь создавать инвайты"""
-        return self.is_admin  # Только администраторы могут создавать инвайты
+        return self.is_admin or self.is_support  # Админы и саппорты могут создавать инвайты
 
 # Модель ключа
 class Key(Base):
@@ -142,6 +142,17 @@ class DiscordCode(Base):
     def is_expired(self):
         """Проверяет, истёк ли код привязки"""
         return datetime.datetime.utcnow() > self.expires_at
+
+# Модель лимитов ролей для инвайтов
+class RoleLimits(Base):
+    __tablename__ = "role_limits"
+    
+    id = Column(Integer, primary_key=True)
+    admin_monthly_invites = Column(Integer, nullable=False, default=999)  # Практически неограниченно для админов
+    support_monthly_invites = Column(Integer, nullable=False, default=10)
+    user_monthly_invites = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 # Создание соединения с базой данных
 engine = create_engine(DATABASE_URL)

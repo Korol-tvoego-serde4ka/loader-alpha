@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 # Добавление пути к корню проекта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database.models import SessionLocal, User, Key, Invite, DiscordCode
+from database.models import SessionLocal, User, Key, Invite, DiscordCode, RoleLimits
 
 # Настройка шифрования паролей
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -375,6 +375,36 @@ class GenerateInvite(Resource):
         # Проверка прав на создание инвайтов
         if not user.can_create_invite():
             return {"message": "Недостаточно прав для создания инвайтов"}, 403
+        
+        # Проверка месячного лимита инвайтов
+        limits = db.query(RoleLimits).first()
+        if not limits:
+            # Значения по умолчанию, если настройки еще не были созданы
+            limits = RoleLimits(
+                admin_monthly_invites=999,
+                support_monthly_invites=10,
+                user_monthly_invites=0
+            )
+            db.add(limits)
+            db.commit()
+        
+        # Определение лимита для пользователя в зависимости от его роли
+        if user.is_admin:
+            monthly_limit = limits.admin_monthly_invites
+        elif user.is_support:
+            monthly_limit = limits.support_monthly_invites
+        else:
+            monthly_limit = limits.user_monthly_invites
+        
+        # Проверка количества созданных инвайтов за текущий месяц
+        current_month_start = datetime.datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        used_invites = db.query(Invite).filter(
+            Invite.created_by_id == user_id,
+            Invite.created_at >= current_month_start
+        ).count()
+        
+        if used_invites >= monthly_limit:
+            return {"message": f"Достигнут месячный лимит инвайтов ({monthly_limit})"}, 403
         
         # Создание инвайт-кода со сроком действия 30 дней
         invite_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=30)
@@ -818,6 +848,126 @@ class AdminUserActivity(Resource):
             ]
         }
 
+class AdminDeleteInvite(Resource):
+    @jwt_required()
+    def post(self, invite_id):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что текущий пользователь является администратором
+        current_user = db.query(User).filter(User.id == user_id).first()
+        if not current_user or not current_user.is_admin:
+            return {"message": "Недостаточно прав для удаления инвайта"}, 403
+            
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Поиск инвайта
+        invite = db.query(Invite).filter(Invite.id == invite_id).first()
+        if not invite:
+            return {"message": "Инвайт не найден"}, 404
+            
+        # Удаление инвайта
+        db.delete(invite)
+        db.commit()
+        
+        return {"message": "Инвайт успешно удален"}
+
+class AdminSetInviteLimits(Resource):
+    @jwt_required()
+    def post(self):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка, что текущий пользователь является администратором
+        current_user = db.query(User).filter(User.id == user_id).first()
+        if not current_user or not current_user.is_admin:
+            return {"message": "Недостаточно прав для изменения лимитов"}, 403
+            
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Получение данных из запроса
+        data = request.get_json()
+        admin_limit = data.get("admin_limit", 999)  # Практически неограниченно для админов
+        support_limit = data.get("support_limit", 10)
+        user_limit = data.get("user_limit", 0)
+        
+        # Обновление или создание настроек лимитов
+        limits = db.query(RoleLimits).first()
+        if not limits:
+            limits = RoleLimits(
+                admin_monthly_invites=admin_limit,
+                support_monthly_invites=support_limit,
+                user_monthly_invites=user_limit
+            )
+            db.add(limits)
+        else:
+            limits.admin_monthly_invites = admin_limit
+            limits.support_monthly_invites = support_limit
+            limits.user_monthly_invites = user_limit
+        
+        db.commit()
+        
+        return {
+            "admin_limit": admin_limit,
+            "support_limit": support_limit,
+            "user_limit": user_limit,
+            "message": "Лимиты успешно обновлены"
+        }
+
+class GetInviteLimits(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        db = get_db()
+        
+        # Проверка пользователя
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+            
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Получение настроек лимитов
+        limits = db.query(RoleLimits).first()
+        if not limits:
+            # Значения по умолчанию, если настройки еще не были созданы
+            limits = RoleLimits(
+                admin_monthly_invites=999,
+                support_monthly_invites=10,
+                user_monthly_invites=0
+            )
+            db.add(limits)
+            db.commit()
+            
+        # Подсчет количества использованных инвайтов за текущий месяц
+        current_month_start = datetime.datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        used_invites = db.query(Invite).filter(
+            Invite.created_by_id == user_id,
+            Invite.created_at >= current_month_start
+        ).count()
+        
+        # Определение лимита для текущего пользователя
+        if user.is_admin:
+            user_limit = limits.admin_monthly_invites
+        elif user.is_support:
+            user_limit = limits.support_monthly_invites
+        else:
+            user_limit = limits.user_monthly_invites
+            
+        return {
+            "monthly_limit": user_limit,
+            "used_invites": used_invites,
+            "remaining_invites": max(0, user_limit - used_invites),
+            "global_limits": {
+                "admin": limits.admin_monthly_invites,
+                "support": limits.support_monthly_invites,
+                "user": limits.user_monthly_invites
+            }
+        }
+
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
 api.add_resource(Register, "/api/users/register")
@@ -837,6 +987,9 @@ api.add_resource(AdminUnbanUser, "/api/admin/users/<int:user_id>/unban")
 api.add_resource(AdminSetRole, "/api/admin/users/<int:user_id>/role")
 api.add_resource(AdminGetAllUsers, "/api/admin/users")
 api.add_resource(AdminUserActivity, "/api/admin/users/activity")
+api.add_resource(AdminDeleteInvite, "/api/admin/invites/<int:invite_id>/delete")
+api.add_resource(AdminSetInviteLimits, "/api/admin/invites/limits")
+api.add_resource(GetInviteLimits, "/api/invites/limits")
 api.add_resource(DownloadMod, "/api/download/<string:mod_name>")
 
 # Основной маршрут для одностраничного приложения
