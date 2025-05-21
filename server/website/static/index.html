@@ -484,9 +484,15 @@
                                 </div>
                             </div>
                             <div id="all-keys-list" style="display: none;">
+                                <div class="mb-3">
+                                    <button id="revoke-selected-keys-button" class="btn btn-danger">Отозвать выбранные</button>
+                                    <button id="restore-selected-keys-button" class="btn btn-success ml-2">Восстановить выбранные</button>
+                                    <button id="delete-selected-keys-button" class="btn btn-dark ml-2">Удалить выбранные</button>
+                                </div>
                                 <table class="table table-dark">
                                     <thead>
                                         <tr>
+                                            <th><input type="checkbox" id="select-all-keys" title="Выбрать все"></th>
                                             <th>ID</th>
                                             <th>Ключ</th>
                                             <th>Создан</th>

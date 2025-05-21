@@ -111,6 +111,19 @@ const api = {
         return api.request(`/admin/keys/${keyId}/revoke`, 'POST');
     },
     
+    // Восстановление ключа (для админов)
+    restoreKey: (keyId) => {
+        return api.request(`/admin/keys/${keyId}/restore`, 'POST');
+    },
+    
+    // Массовые операции с ключами (для админов)
+    bulkKeyAction: (keyIds, action) => {
+        return api.request('/admin/keys/bulk-action', 'POST', {
+            key_ids: keyIds,
+            action: action
+        });
+    },
+    
     // Установка лимитов инвайтов (для админов)
     setInviteLimits: (adminLimit, supportLimit, userLimit) => {
         return api.request('/admin/invites/limits', 'POST', {
@@ -678,6 +691,7 @@ async function loadAllKeys() {
             const status = key.is_active ? (key.time_left > 0 ? 'Активен' : 'Истёк') : 'Отозван';
             
             row.innerHTML = `
+                <td><input type="checkbox" class="key-checkbox" data-id="${key.id}"></td>
                 <td>${key.id}</td>
                 <td>${key.key}</td>
                 <td>${utils.formatDate(key.created_at)}</td>
@@ -688,7 +702,7 @@ async function loadAllKeys() {
                 <td>
                     ${key.is_active ? 
                         `<button class="btn btn-danger btn-sm revoke-key-btn" data-id="${key.id}">Отозвать</button>` : 
-                        'Отозван'
+                        `<button class="btn btn-success btn-sm restore-key-btn" data-id="${key.id}">Восстановить</button>`
                     }
                 </td>
             `;
@@ -716,12 +730,99 @@ async function loadAllKeys() {
             });
         });
         
+        // Добавляем обработчики для кнопок восстановления ключей
+        document.querySelectorAll('.restore-key-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const keyId = button.getAttribute('data-id');
+                if (confirm('Вы уверены, что хотите восстановить этот ключ?')) {
+                    try {
+                        button.disabled = true;
+                        button.textContent = 'Восстановление...';
+                        
+                        await api.restoreKey(keyId);
+                        loadAllKeys(); // Перезагрузка списка после восстановления
+                    } catch (error) {
+                        alert(`Ошибка при восстановлении ключа: ${error.message}`);
+                        button.disabled = false;
+                        button.textContent = 'Восстановить';
+                    }
+                }
+            });
+        });
+        
+        // Обработчик для выбора всех ключей
+        const selectAllCheckbox = document.getElementById('select-all-keys');
+        selectAllCheckbox.addEventListener('change', () => {
+            const isChecked = selectAllCheckbox.checked;
+            document.querySelectorAll('.key-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+        });
+        
+        // Обработчики для кнопок массовых операций
+        document.getElementById('revoke-selected-keys-button').addEventListener('click', async () => {
+            const selectedKeyIds = getSelectedKeyIds();
+            if (selectedKeyIds.length === 0) {
+                alert('Выберите ключи для отзыва');
+                return;
+            }
+            
+            if (confirm(`Вы уверены, что хотите отозвать ${selectedKeyIds.length} ключ(ей)?`)) {
+                try {
+                    await api.bulkKeyAction(selectedKeyIds, 'revoke');
+                    loadAllKeys();
+                } catch (error) {
+                    alert(`Ошибка при массовом отзыве ключей: ${error.message}`);
+                }
+            }
+        });
+        
+        document.getElementById('restore-selected-keys-button').addEventListener('click', async () => {
+            const selectedKeyIds = getSelectedKeyIds();
+            if (selectedKeyIds.length === 0) {
+                alert('Выберите ключи для восстановления');
+                return;
+            }
+            
+            if (confirm(`Вы уверены, что хотите восстановить ${selectedKeyIds.length} ключ(ей)?`)) {
+                try {
+                    await api.bulkKeyAction(selectedKeyIds, 'restore');
+                    loadAllKeys();
+                } catch (error) {
+                    alert(`Ошибка при массовом восстановлении ключей: ${error.message}`);
+                }
+            }
+        });
+        
+        document.getElementById('delete-selected-keys-button').addEventListener('click', async () => {
+            const selectedKeyIds = getSelectedKeyIds();
+            if (selectedKeyIds.length === 0) {
+                alert('Выберите ключи для удаления');
+                return;
+            }
+            
+            if (confirm(`Вы уверены, что хотите удалить ${selectedKeyIds.length} ключ(ей)? Это действие необратимо!`)) {
+                try {
+                    await api.bulkKeyAction(selectedKeyIds, 'delete');
+                    loadAllKeys();
+                } catch (error) {
+                    alert(`Ошибка при массовом удалении ключей: ${error.message}`);
+                }
+            }
+        });
+        
         document.getElementById('all-keys-list').style.display = 'block';
     } catch (error) {
         console.error('Ошибка при загрузке ключей:', error);
     } finally {
         document.getElementById('all-keys-loading').style.display = 'none';
     }
+}
+
+// Вспомогательная функция для получения ID выбранных ключей
+function getSelectedKeyIds() {
+    const selectedCheckboxes = document.querySelectorAll('.key-checkbox:checked');
+    return Array.from(selectedCheckboxes).map(checkbox => parseInt(checkbox.getAttribute('data-id')));
 }
 
 // Инициализация приложения

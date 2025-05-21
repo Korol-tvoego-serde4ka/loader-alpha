@@ -1119,6 +1119,97 @@ class AdminRevokeKey(Resource):
             # Возвращаем ошибку в формате JSON
             return {"message": f"Ошибка при отзыве ключа: {str(e)}"}, 500
 
+class AdminRestoreKey(Resource):
+    @jwt_required()
+    def post(self, key_id):
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для восстановления ключа"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Поиск ключа
+            key = db.query(Key).filter(Key.id == key_id).first()
+            if not key:
+                return {"message": "Ключ не найден"}, 404
+                
+            # Восстановление ключа (активация)
+            key.is_active = True
+            db.commit()
+            
+            return {"message": "Ключ успешно восстановлен"}
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при восстановлении ключа: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при восстановлении ключа: {str(e)}"}, 500
+
+class AdminBulkKeyAction(Resource):
+    @jwt_required()
+    def post(self):
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для массовых операций с ключами"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Получение данных из запроса
+            data = request.get_json()
+            key_ids = data.get("key_ids", [])
+            action = data.get("action", "")
+            
+            if not key_ids:
+                return {"message": "Не указаны ID ключей"}, 400
+                
+            if action not in ["revoke", "restore", "delete"]:
+                return {"message": "Неверное действие. Допустимые значения: revoke, restore, delete"}, 400
+            
+            # Выполнение массового действия
+            affected_count = 0
+            
+            if action == "revoke":
+                # Отзыв ключей
+                affected_count = db.query(Key).filter(Key.id.in_(key_ids)).update({"is_active": False}, synchronize_session=False)
+            
+            elif action == "restore":
+                # Восстановление ключей
+                affected_count = db.query(Key).filter(Key.id.in_(key_ids)).update({"is_active": True}, synchronize_session=False)
+            
+            elif action == "delete":
+                # Удаление ключей
+                affected_count = db.query(Key).filter(Key.id.in_(key_ids)).delete(synchronize_session=False)
+            
+            db.commit()
+            
+            action_text = {
+                "revoke": "отозвано",
+                "restore": "восстановлено",
+                "delete": "удалено"
+            }
+            
+            return {
+                "message": f"Успешно {action_text[action]} ключей: {affected_count}",
+                "affected_count": affected_count
+            }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при выполнении массового действия с ключами: {str(e)}")
+            db.rollback()
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при выполнении массового действия с ключами: {str(e)}"}, 500
+
 class AdminCleanupKeys(Resource):
     @jwt_required()
     def post(self):
@@ -1255,6 +1346,8 @@ api.add_resource(DownloadMod, "/api/download/<string:mod_name>")
 api.add_resource(AdminDeleteMultipleInvites, "/api/admin/invites/delete")
 api.add_resource(AdminGetAllKeys, "/api/admin/keys")
 api.add_resource(AdminRevokeKey, "/api/admin/keys/<int:key_id>/revoke")
+api.add_resource(AdminRestoreKey, "/api/admin/keys/<int:key_id>/restore")
+api.add_resource(AdminBulkKeyAction, "/api/admin/keys/bulk-action")
 api.add_resource(AdminCleanupKeys, "/api/admin/keys/cleanup")
 api.add_resource(AdminGetCleanupStats, "/api/admin/keys/stats")
 
