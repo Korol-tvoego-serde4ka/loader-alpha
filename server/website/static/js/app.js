@@ -515,6 +515,15 @@ const auth = {
             if (homeButtons) homeButtons.style.display = 'none';
             if (downloadButton) downloadButton.style.display = 'block';
             
+            // Отображение навигационных элементов
+            const keysNav = document.getElementById('keys-nav');
+            const invitesNav = document.getElementById('invites-nav');
+            const discordNav = document.getElementById('discord-nav');
+            
+            if (keysNav) keysNav.style.display = 'block';
+            if (invitesNav) invitesNav.style.display = 'block';
+            if (discordNav) discordNav.style.display = 'block';
+            
             // Отображение админ-панели для админов и саппорта
             const navAdmin = document.getElementById('nav-admin');
             const adminCommands = document.getElementById('admin-commands');
@@ -554,6 +563,15 @@ const auth = {
             const homeButtons = document.getElementById('home-buttons');
             const downloadButton = document.getElementById('download-button');
             const navAdmin = document.getElementById('nav-admin');
+            
+            // Скрываем навигационные элементы
+            const keysNav = document.getElementById('keys-nav');
+            const invitesNav = document.getElementById('invites-nav');
+            const discordNav = document.getElementById('discord-nav');
+            
+            if (keysNav) keysNav.style.display = 'none';
+            if (invitesNav) invitesNav.style.display = 'none';
+            if (discordNav) discordNav.style.display = 'none';
             
             if (loginButtons) loginButtons.style.display = 'flex';
             if (userInfo) userInfo.style.display = 'none';
