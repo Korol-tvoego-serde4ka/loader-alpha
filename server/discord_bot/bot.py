@@ -635,15 +635,8 @@ def main():
         return
     
     try:
-        # Явное указание интентов для предотвращения ошибок с получением данных
-        intents = discord.Intents.default()
-        intents.message_content = True
-        intents.members = True
-        
-        # Перестраиваем бота с явными интентами
-        bot.intents = intents
-        
         # Запускаем бота с автоматическим переподключением
+        # Примечание: интенты уже настроены при создании бота
         bot.run(DISCORD_TOKEN, reconnect=True, log_handler=None)
     except discord.errors.HTTPException as e:
         print(f"Ошибка HTTP при запуске бота: {e}")
