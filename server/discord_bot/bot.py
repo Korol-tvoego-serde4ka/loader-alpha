@@ -32,8 +32,15 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-# Создание бота
-bot = commands.Bot(command_prefix='!', intents=intents)
+# Создание бота с настроенными интентами
+bot = commands.Bot(
+    command_prefix='!', 
+    intents=intents,
+    # Отключаем автоматический chunking при запуске
+    chunk_guild_at_startup=False,
+    # Не запрашиваем большие списки участников при добавлении на сервер
+    fetch_offline_members=False
+)
 
 # Создание API клиента для взаимодействия с сервером
 class APIClient:
@@ -142,8 +149,10 @@ async def on_ready():
     """Вызывается при успешном подключении бота"""
     print(f'Бот успешно подключен как {bot.user.name}')
     
-    # Отключение автоматического получения списка участников - это исправит ошибку
-    bot.member_cache_flags.joined = True
+    # Отключаем автоматический chunking, который вызывает ошибки
+    # Новый метод, совместимый с текущей версией discord.py
+    if hasattr(bot, 'chunks_on_guild_available'):
+        bot.chunks_on_guild_available = False
     
     # Синхронизация команд с Discord
     try:
@@ -626,7 +635,16 @@ def main():
         return
     
     try:
-        bot.run(DISCORD_TOKEN, reconnect=True)
+        # Явное указание интентов для предотвращения ошибок с получением данных
+        intents = discord.Intents.default()
+        intents.message_content = True
+        intents.members = True
+        
+        # Перестраиваем бота с явными интентами
+        bot.intents = intents
+        
+        # Запускаем бота с автоматическим переподключением
+        bot.run(DISCORD_TOKEN, reconnect=True, log_handler=None)
     except discord.errors.HTTPException as e:
         print(f"Ошибка HTTP при запуске бота: {e}")
         if str(e).startswith("429"):
@@ -635,8 +653,16 @@ def main():
         print("Неверный токен бота. Проверьте DISCORD_TOKEN в .env файле.")
     except aiohttp.client_exceptions.ClientConnectionError:
         print("Ошибка подключения к Discord. Проверьте интернет-соединение.")
+    except TypeError as e:
+        if "StickerFormatType" in str(e):
+            print("Ошибка с форматом стикеров Discord. Требуется обновить discord.py до последней версии.")
+            print("Выполните: pip install -U discord.py")
+        else:
+            print(f"Ошибка типа данных: {e}")
     except Exception as e:
-        print(f"Ошибка при запуске бота: {e}")
+        print(f"Ошибка при запуске бота: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main() 
