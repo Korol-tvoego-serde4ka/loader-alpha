@@ -368,84 +368,123 @@ const navigation = {
     
     // Переход на страницу
     navigateTo: function(page) {
-        // Скрываем все страницы
-        document.querySelectorAll('[id$="-page"]').forEach(el => {
-            el.style.display = 'none';
-        });
-        
-        // Убираем активный класс у всех ссылок
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-        });
-        
-        this.currentPage = page;
-        let showPage = true;
-        
-        // Проверка доступа к странице
-        if (page === 'admin' && (!userData || !userData.is_admin)) {
-            showPage = false;
-            page = 'home';
-            this.currentPage = 'home';
-        }
-        
-        if (['keys', 'invites', 'discord'].includes(page) && !token) {
-            showPage = false;
-            page = 'login';
-            this.currentPage = 'login';
-        }
-        
-        // Показываем выбранную страницу
-        const pageEl = document.getElementById(`${page}-page`);
-        if (pageEl && showPage) {
-            pageEl.style.display = 'block';
+        try {
+            console.log('Navigating to page:', page);
             
-            // Подсвечиваем активную ссылку
-            const navLink = document.querySelector(`.nav-link[href="#${page}"]`);
-            if (navLink) {
-                navLink.classList.add('active');
+            // Скрываем все страницы
+            document.querySelectorAll('[id$="-page"]').forEach(el => {
+                if (el) el.style.display = 'none';
+            });
+            
+            // Убираем активный класс у всех ссылок
+            document.querySelectorAll('.nav-link').forEach(link => {
+                if (link) link.classList.remove('active');
+            });
+            
+            this.currentPage = page;
+            let showPage = true;
+            
+            // Проверка доступа к странице
+            if (page === 'admin' && (!userData || !userData.is_admin)) {
+                showPage = false;
+                page = 'home';
+                this.currentPage = 'home';
             }
             
-            // Обновляем историю
-            window.location.hash = `#${page}`;
+            if (['keys', 'invites', 'discord'].includes(page) && !token) {
+                showPage = false;
+                page = 'login';
+                this.currentPage = 'login';
+            }
             
-            // Выполняем дополнительные действия при переходе на определенные страницы
-            if (page === 'keys') {
-                loadKeys();
-            } else if (page === 'invites') {
-                loadInvites();
-            } else if (page === 'discord') {
-                loadDiscordStatus();
-            } else if (page === 'admin') {
-                loadAdminData();
+            // Показываем выбранную страницу
+            const pageEl = document.getElementById(`${page}-page`);
+            if (pageEl && showPage) {
+                pageEl.style.display = 'block';
+                
+                // Подсвечиваем активную ссылку
+                const navLink = document.querySelector(`.nav-link[href="#${page}"]`);
+                if (navLink) {
+                    navLink.classList.add('active');
+                }
+                
+                // Обновляем историю
+                window.location.hash = `#${page}`;
+                
+                // Выполняем дополнительные действия при переходе на определенные страницы
+                if (page === 'keys') {
+                    try {
+                        loadKeys();
+                    } catch (e) {
+                        console.error('Error loading keys:', e);
+                    }
+                } else if (page === 'invites') {
+                    try {
+                        loadInvites();
+                    } catch (e) {
+                        console.error('Error loading invites:', e);
+                    }
+                } else if (page === 'discord') {
+                    try {
+                        loadDiscordStatus();
+                    } catch (e) {
+                        console.error('Error loading discord status:', e);
+                    }
+                } else if (page === 'admin') {
+                    try {
+                        loadAdminData();
+                    } catch (e) {
+                        console.error('Error loading admin data:', e);
+                    }
+                }
+            } else if (page === 'home') {
+                const homePage = document.getElementById('home-page');
+                if (homePage) homePage.style.display = 'block';
+                const navLink = document.querySelector(`.nav-link[href="#home"]`);
+                if (navLink) {
+                    navLink.classList.add('active');
+                }
+            } else if (page === 'login') {
+                const loginPage = document.getElementById('login-page');
+                if (loginPage) loginPage.style.display = 'block';
+                const navLink = document.querySelector(`.nav-link[href="#login"]`);
+                if (navLink) {
+                    navLink.classList.add('active');
+                }
+            } else if (page === 'register') {
+                const registerPage = document.getElementById('register-page');
+                if (registerPage) registerPage.style.display = 'block';
+                const navLink = document.querySelector(`.nav-link[href="#register"]`);
+                if (navLink) {
+                    navLink.classList.add('active');
+                }
+            } else if (page === 'docs') {
+                const docsPage = document.getElementById('docs-page');
+                if (docsPage) docsPage.style.display = 'block';
+                const navLink = document.querySelector(`.nav-link[href="#docs"]`);
+                if (navLink) {
+                    navLink.classList.add('active');
+                }
             }
-        } else if (page === 'home') {
-            document.getElementById('home-page').style.display = 'block';
-            const navLink = document.querySelector(`.nav-link[href="#home"]`);
-            if (navLink) {
-                navLink.classList.add('active');
+            
+            // Прокручиваем страницу вверх
+            try {
+                window.scrollTo(0, 0);
+            } catch (e) {
+                console.error('Error scrolling to top:', e);
             }
-        } else if (page === 'login') {
-            document.getElementById('login-page').style.display = 'block';
-            const navLink = document.querySelector(`.nav-link[href="#login"]`);
-            if (navLink) {
-                navLink.classList.add('active');
-            }
-        } else if (page === 'register') {
-            document.getElementById('register-page').style.display = 'block';
-            const navLink = document.querySelector(`.nav-link[href="#register"]`);
-            if (navLink) {
-                navLink.classList.add('active');
-            }
-        } else if (page === 'docs') {
-            document.getElementById('docs-page').style.display = 'block';
-            const navLink = document.querySelector(`.nav-link[href="#docs"]`);
-            if (navLink) {
-                navLink.classList.add('active');
+            
+            console.log('Navigation complete:', page);
+        } catch (error) {
+            console.error('Navigation error:', error);
+            // Восстановление в случае ошибки
+            try {
+                const homePage = document.getElementById('home-page');
+                if (homePage) homePage.style.display = 'block';
+            } catch (e) {
+                console.error('Failed to recover navigation:', e);
             }
         }
-        
-        // Прокручиваем страницу вверх
-        window.scrollTo(0, 0);
     }
 };
 
@@ -603,9 +642,9 @@ async function loadInvites() {
             limitsData = dataCache.inviteLimits;
         } else {
             [invitesData, limitsData] = await Promise.all([
-                api.getInvites(),
-                api.getInviteLimits()
-            ]);
+            api.getInvites(),
+            api.getInviteLimits()
+        ]);
             
             dataCache.updateCache('invites', invitesData.invites);
             dataCache.updateCache('inviteLimits', limitsData);
@@ -805,7 +844,7 @@ async function loadAdminData() {
         if (dataCache.isCacheValid('users')) {
             usersData = { users: dataCache.users };
         } else {
-            // Получаем данные активности пользователей
+        // Получаем данные активности пользователей
             usersData = await api.getUsersActivity();
             dataCache.updateCache('users', usersData.users);
         }
@@ -847,10 +886,10 @@ async function loadAdminData() {
                 <td>${utils.formatIpAddress(user.last_ip)}</td>
                 <td>
                     <div class="action-buttons">
-                        ${user.is_banned ? 
+                    ${user.is_banned ? 
                             `<button class="btn btn-success btn-sm unban-user" data-id="${user.id}">Разбл</button>` :
                             `<button class="btn btn-danger btn-sm ban-user" data-id="${user.id}">Блок</button>`
-                        }
+                    }
                         <div class="user-role-buttons d-inline-flex" data-user-id="${user.id}"></div>
                     </div>
                 </td>
@@ -1232,50 +1271,80 @@ function getSelectedKeyIds() {
 const themeUtils = {
     // Проверяем предпочтительную тему пользователя
     getPreferredTheme: function() {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            return savedTheme;
+        try {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                return savedTheme;
+            }
+            
+            // Проверяем системные настройки
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        } catch (error) {
+            console.error('Error getting preferred theme:', error);
+            return 'dark'; // Дефолтная тема при ошибке
         }
-        
-        // Проверяем системные настройки
-        return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     },
     
     // Устанавливаем тему
     setTheme: function(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-        
-        // Обновляем иконку
-        const themeIcon = document.querySelector('.theme-icon i');
-        const themeCheckbox = document.getElementById('theme-checkbox');
-        
-        if (theme === 'light') {
-            themeIcon.className = 'fas fa-sun';
-            themeCheckbox.checked = true;
-        } else {
-            themeIcon.className = 'fas fa-moon';
-            themeCheckbox.checked = false;
+        try {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            
+            // Обновляем иконку
+            const themeIcon = document.querySelector('.theme-icon i');
+            const themeCheckbox = document.getElementById('theme-checkbox');
+            
+            if (theme === 'light') {
+                if (themeIcon) themeIcon.className = 'fas fa-sun';
+                if (themeCheckbox) themeCheckbox.checked = true;
+            } else {
+                if (themeIcon) themeIcon.className = 'fas fa-moon';
+                if (themeCheckbox) themeCheckbox.checked = false;
+            }
+            
+            console.log('Theme set to:', theme);
+        } catch (error) {
+            console.error('Error setting theme:', error);
         }
     },
     
     // Переключение темы
     toggleTheme: function() {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        this.setTheme(newTheme);
+        try {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            this.setTheme(newTheme);
+            console.log('Theme toggled to:', newTheme);
+        } catch (error) {
+            console.error('Error toggling theme:', error);
+        }
     },
     
     // Инициализация
     init: function() {
-        // Устанавливаем начальную тему
-        const preferredTheme = this.getPreferredTheme();
-        this.setTheme(preferredTheme);
-        
-        // Настраиваем обработчик переключения
-        document.getElementById('theme-checkbox')?.addEventListener('change', () => {
-            this.toggleTheme();
-        });
+        try {
+            console.log('Initializing theme system...');
+            
+            // Устанавливаем начальную тему
+            const preferredTheme = this.getPreferredTheme();
+            this.setTheme(preferredTheme);
+            
+            // Настраиваем обработчик переключения
+            const themeCheckbox = document.getElementById('theme-checkbox');
+            if (themeCheckbox) {
+                themeCheckbox.addEventListener('change', () => {
+                    this.toggleTheme();
+                });
+                console.log('Theme toggle handler set up');
+            } else {
+                console.warn('Theme checkbox element not found');
+            }
+            
+            console.log('Theme system initialized with theme:', preferredTheme);
+        } catch (error) {
+            console.error('Error initializing theme system:', error);
+        }
     }
 };
 
@@ -1518,336 +1587,492 @@ const i18n = {
     
     // Получение перевода
     get: function(key) {
-        if (this.translations[this.currentLang] && this.translations[this.currentLang][key]) {
-            return this.translations[this.currentLang][key];
+        try {
+            if (this.translations[this.currentLang] && this.translations[this.currentLang][key]) {
+                return this.translations[this.currentLang][key];
+            }
+            
+            // Если перевод не найден, возвращаем ключ
+            return key;
+        } catch (error) {
+            console.error('Error getting translation for key:', key, error);
+            return key;
         }
-        
-        // Если перевод не найден, возвращаем ключ
-        return key;
     },
     
     // Установка языка
     setLanguage: function(lang) {
-        if (this.languages[lang]) {
-            this.currentLang = lang;
-            localStorage.setItem('language', lang);
-            this.updatePageText();
+        try {
+            if (this.languages[lang]) {
+                console.log('Setting language to:', lang);
+                this.currentLang = lang;
+                localStorage.setItem('language', lang);
+                this.updatePageText();
+                console.log('Language set to:', lang);
+            }
+        } catch (error) {
+            console.error('Error setting language:', error);
         }
     },
     
     // Добавление переключателя языка
     addLanguageSwitcher: function() {
-        const navbar = document.querySelector('.navbar-nav');
-        if (!navbar) return;
-        
-        const langDropdown = document.createElement('div');
-        langDropdown.className = 'nav-item dropdown ml-2';
-        langDropdown.innerHTML = `
-            <a class="nav-link dropdown-toggle" href="#" id="langDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                ${this.languages[this.currentLang]}
-            </a>
-            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
-                ${Object.entries(this.languages).map(([code, name]) => 
-                    `<a class="dropdown-item lang-option" data-lang="${code}" href="#">${name}</a>`
-                ).join('')}
-            </div>
-        `;
-        
-        navbar.appendChild(langDropdown);
-        
-        // Обработчики событий
-        document.querySelectorAll('.lang-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                e.preventDefault();
-                const lang = option.getAttribute('data-lang');
-                this.setLanguage(lang);
-                document.getElementById('langDropdown').textContent = this.languages[lang];
+        try {
+            const navbar = document.querySelector('.navbar-nav');
+            if (!navbar) {
+                console.warn('Navbar not found, cannot add language switcher');
+                return;
+            }
+            
+            const langDropdown = document.createElement('div');
+            langDropdown.className = 'nav-item dropdown ml-2';
+            langDropdown.innerHTML = `
+                <a class="nav-link dropdown-toggle" href="#" id="langDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    ${this.languages[this.currentLang]}
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
+                    ${Object.entries(this.languages).map(([code, name]) => 
+                        `<a class="dropdown-item lang-option" data-lang="${code}" href="#">${name}</a>`
+                    ).join('')}
+                </div>
+            `;
+            
+            navbar.appendChild(langDropdown);
+            
+            // Обработчики событий
+            document.querySelectorAll('.lang-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const lang = option.getAttribute('data-lang');
+                    this.setLanguage(lang);
+                    
+                    const langDropdownEl = document.getElementById('langDropdown');
+                    if (langDropdownEl) {
+                        langDropdownEl.textContent = this.languages[lang];
+                    }
+                });
             });
-        });
+            
+            console.log('Language switcher added');
+        } catch (error) {
+            console.error('Error adding language switcher:', error);
+        }
     },
     
     // Обновление текста на странице
     updatePageText: function() {
-        // Обновляем все элементы с атрибутом data-i18n
-        document.querySelectorAll('[data-i18n]').forEach(element => {
-            const key = element.getAttribute('data-i18n');
-            element.textContent = this.get(key);
-        });
-        
-        // Обновляем плейсхолдеры в инпутах
-        document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-            const key = element.getAttribute('data-i18n-placeholder');
-            element.placeholder = this.get(key);
-        });
-        
-        // Обновляем заголовок страницы
-        document.title = this.get('app_name');
+        try {
+            console.log('Updating page text for language:', this.currentLang);
+            
+            // Обновляем все элементы с атрибутом data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                try {
+                    const key = element.getAttribute('data-i18n');
+                    element.textContent = this.get(key);
+                } catch (e) {
+                    console.error('Error updating element with key:', key, e);
+                }
+            });
+            
+            // Обновляем плейсхолдеры в инпутах
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                try {
+                    const key = element.getAttribute('data-i18n-placeholder');
+                    element.placeholder = this.get(key);
+                } catch (e) {
+                    console.error('Error updating placeholder with key:', key, e);
+                }
+            });
+            
+            // Обновляем заголовок страницы
+            document.title = this.get('app_name');
+            
+            console.log('Page text updated');
+        } catch (error) {
+            console.error('Error updating page text:', error);
+        }
     },
     
     // Инициализация
     init: function() {
-        // Загружаем сохраненный язык
-        const savedLang = localStorage.getItem('language');
-        if (savedLang && this.languages[savedLang]) {
-            this.currentLang = savedLang;
-        } else {
-            // Определяем язык по браузеру
-            const browserLang = navigator.language.split('-')[0];
-            this.currentLang = this.languages[browserLang] ? browserLang : 'ru';
+        try {
+            console.log('Initializing i18n system...');
+            
+            // Загружаем сохраненный язык
+            const savedLang = localStorage.getItem('language');
+            if (savedLang && this.languages[savedLang]) {
+                this.currentLang = savedLang;
+            } else {
+                // Определяем язык по браузеру
+                const browserLang = navigator.language.split('-')[0];
+                this.currentLang = this.languages[browserLang] ? browserLang : 'ru';
+            }
+            
+            // Добавляем переключатель языка
+            this.addLanguageSwitcher();
+            
+            // Обновляем текст
+            this.updatePageText();
+            
+            console.log('i18n system initialized with language:', this.currentLang);
+        } catch (error) {
+            console.error('Error initializing i18n system:', error);
         }
-        
-        // Добавляем переключатель языка
-        this.addLanguageSwitcher();
-        
-        // Обновляем текст
-        this.updatePageText();
     }
 };
 
 // Функции для пользовательских настроек
 async function initApp() {
-    // Инициализация темы
-    themeUtils.init();
-    
-    // Инициализация локализации
-    i18n.init();
-    
-    // Настройка обработчика ошибок
-    errorHandler.setupGlobalHandler();
-    
-    // Проверка авторизации
-    const isAuthenticated = await auth.checkAuth();
-    
-    // Определение стартовой страницы
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-        if (hash === 'login' || hash === 'register') {
-            if (isAuthenticated) {
+    try {
+        console.log("Initializing app...");
+        
+        // Инициализация темы
+        themeUtils.init();
+        
+        // Инициализация локализации
+        i18n.init();
+        
+        // Настройка обработчика ошибок
+        errorHandler.setupGlobalHandler();
+        
+        // Проверка авторизации
+        const isAuthenticated = await auth.checkAuth();
+        
+        // Определение стартовой страницы
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+            if (hash === 'login' || hash === 'register') {
+                if (isAuthenticated) {
+                    navigation.navigateTo('home');
+                } else {
+                    navigation.navigateTo(hash);
+                }
+            } else if (['keys', 'invites', 'discord', 'admin'].includes(hash)) {
+                if (isAuthenticated) {
+                    navigation.navigateTo(hash);
+                } else {
+                    navigation.navigateTo('login');
+                }
+            } else {
                 navigation.navigateTo('home');
-            } else {
-                navigation.navigateTo(hash);
-            }
-        } else if (['keys', 'invites', 'discord', 'admin'].includes(hash)) {
-            if (isAuthenticated) {
-                navigation.navigateTo(hash);
-            } else {
-                navigation.navigateTo('login');
             }
         } else {
             navigation.navigateTo('home');
         }
-    } else {
-        navigation.navigateTo('home');
-    }
-    
-    // Инициализация утилит для работы с таблицами
-    tableUtils.init();
-    
-    // Обработчики событий
-    
-    // Обработка навигации
-    document.querySelectorAll('.navbar-nav a').forEach(link => {
-        link.addEventListener('click', (e) => {
-            if (link.getAttribute('href').startsWith('#')) {
-                e.preventDefault();
-                const page = link.getAttribute('href').substring(1) || 'home';
-                navigation.navigateTo(page);
+        
+        // Инициализация утилит для работы с таблицами
+        tableUtils.init();
+        
+        // Настройка обработчиков событий
+        setupEventHandlers();
+        
+        console.log("App initialization completed successfully");
+    } catch (error) {
+        console.error("Error during app initialization:", error);
+        // Отображение ошибки пользователю
+        const errorElement = document.createElement('div');
+        errorElement.className = 'alert alert-danger';
+        errorElement.style.position = 'fixed';
+        errorElement.style.top = '10px';
+        errorElement.style.left = '50%';
+        errorElement.style.transform = 'translateX(-50%)';
+        errorElement.style.zIndex = '9999';
+        errorElement.style.maxWidth = '80%';
+        errorElement.style.padding = '15px 20px';
+        errorElement.style.borderRadius = '4px';
+        errorElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> Произошла непредвиденная ошибка: ${error.message}`;
+        document.body.appendChild(errorElement);
+        
+        // Удаление сообщения об ошибке через 5 секунд
+        setTimeout(() => {
+            if (errorElement.parentNode) {
+                errorElement.parentNode.removeChild(errorElement);
             }
-        });
-    });
-    
-    // Обработка хэша URL
-    window.addEventListener('hashchange', () => {
-        const hash = window.location.hash.substring(1) || 'home';
-        navigation.navigateTo(hash);
-    });
-    
-    // Выход из системы
-    document.getElementById('logout-button').addEventListener('click', (e) => {
-        e.preventDefault();
-        auth.logout();
-    });
-    
-    // Форма входа
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
+        }, 5000);
         
-        const username = document.getElementById('login-username').value;
-        const password = document.getElementById('login-password').value;
-        
-        document.getElementById('login-error').style.display = 'none';
-        
+        // Попытка перехода на главную страницу
         try {
-            const result = await api.login(username, password);
-            token = result.token;
-            localStorage.setItem('token', token);
-            
-            await auth.checkAuth();
             navigation.navigateTo('home');
-        } catch (error) {
-            document.getElementById('login-error').textContent = error.message;
-            document.getElementById('login-error').style.display = 'block';
+        } catch (navError) {
+            console.error("Failed to navigate to home page:", navError);
         }
-    });
-    
-    // Форма регистрации
-    document.getElementById('register-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
+    }
+}
+
+// Настройка обработчиков событий
+function setupEventHandlers() {
+    try {
+        // Обработка навигации
+        document.querySelectorAll('.navbar-nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (link.getAttribute('href')?.startsWith('#')) {
+                    e.preventDefault();
+                    const page = link.getAttribute('href').substring(1) || 'home';
+                    navigation.navigateTo(page);
+                }
+            });
+        });
         
-        const username = document.getElementById('register-username').value;
-        const email = document.getElementById('register-email').value;
-        const password = document.getElementById('register-password').value;
-        const confirmPassword = document.getElementById('register-confirm-password').value;
-        const invite_code = document.getElementById('register-invite').value;
+        // Обработка хэша URL
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.substring(1) || 'home';
+            navigation.navigateTo(hash);
+        });
         
-        // Проверка совпадения паролей
-        if (password !== confirmPassword) {
-            document.getElementById('register-error').textContent = i18n.get('error_passwords_match');
-            document.getElementById('register-error').style.display = 'block';
-            return;
+        // Выход из системы
+        const logoutButton = document.getElementById('logout-button');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                auth.logout();
+            });
         }
         
-        // Проверка сложности пароля
-        const passwordStrength = secureAuth.checkPasswordStrength(password);
-        if (passwordStrength.score < 2) {
-            document.getElementById('register-error').textContent = i18n.get('password_too_weak');
-            document.getElementById('register-error').style.display = 'block';
-            return;
+        // Форма входа
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('login-username')?.value || '';
+                const password = document.getElementById('login-password')?.value || '';
+                const loginError = document.getElementById('login-error');
+                
+                if (loginError) loginError.style.display = 'none';
+                
+                try {
+                    const result = await api.login(username, password);
+                    token = result.token;
+                    localStorage.setItem('token', token);
+                    
+                    await auth.checkAuth();
+                    navigation.navigateTo('home');
+                } catch (error) {
+                    if (loginError) {
+                        loginError.textContent = error.message;
+                        loginError.style.display = 'block';
+                    }
+                }
+            });
         }
         
-        document.getElementById('register-error').style.display = 'none';
-        
-        try {
-            const registerButton = document.querySelector('#register-form button[type="submit"]');
-            registerButton.disabled = true;
-            registerButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Регистрация...';
-            
-            await api.register(username, email, password, invite_code);
-            
-            // Показываем уведомление об успешной регистрации
-            notifications.show(i18n.get('register_success'), 'success');
-            
-            // Автоматический вход после регистрации
-            const loginResult = await api.login(username, password);
-            token = loginResult.token;
-            localStorage.setItem('token', token);
-            
-            await auth.checkAuth();
-            navigation.navigateTo('keys');
-        } catch (error) {
-            document.getElementById('register-error').textContent = error.message;
-            document.getElementById('register-error').style.display = 'block';
-        } finally {
-            const registerButton = document.querySelector('#register-form button[type="submit"]');
-            registerButton.disabled = false;
-            registerButton.textContent = 'Зарегистрироваться';
+        // Форма регистрации
+        const registerForm = document.getElementById('register-form');
+        if (registerForm) {
+            registerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('register-username')?.value || '';
+                const email = document.getElementById('register-email')?.value || '';
+                const password = document.getElementById('register-password')?.value || '';
+                const confirmPassword = document.getElementById('register-confirm-password')?.value || '';
+                const invite_code = document.getElementById('register-invite')?.value || '';
+                const registerError = document.getElementById('register-error');
+                
+                // Проверка совпадения паролей
+                if (password !== confirmPassword) {
+                    if (registerError) {
+                        registerError.textContent = i18n.get('error_passwords_match');
+                        registerError.style.display = 'block';
+                    }
+                    return;
+                }
+                
+                // Проверка сложности пароля
+                const passwordStrength = secureAuth.checkPasswordStrength(password);
+                if (passwordStrength.score < 2) {
+                    if (registerError) {
+                        registerError.textContent = i18n.get('password_too_weak');
+                        registerError.style.display = 'block';
+                    }
+                    return;
+                }
+                
+                if (registerError) registerError.style.display = 'none';
+                
+                try {
+                    const registerButton = document.querySelector('#register-form button[type="submit"]');
+                    if (registerButton) {
+                        registerButton.disabled = true;
+                        registerButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Регистрация...';
+                    }
+                    
+                    await api.register(username, email, password, invite_code);
+                    
+                    // Показываем уведомление об успешной регистрации
+                    notifications.show(i18n.get('register_success'), 'success');
+                    
+                    // Автоматический вход после регистрации
+                    const loginResult = await api.login(username, password);
+                    token = loginResult.token;
+                    localStorage.setItem('token', token);
+                    
+                    await auth.checkAuth();
+                    navigation.navigateTo('keys');
+                } catch (error) {
+                    if (registerError) {
+                        registerError.textContent = error.message;
+                        registerError.style.display = 'block';
+                    }
+                } finally {
+                    const registerButton = document.querySelector('#register-form button[type="submit"]');
+                    if (registerButton) {
+                        registerButton.disabled = false;
+                        registerButton.textContent = 'Зарегистрироваться';
+                    }
+                }
+            });
         }
-    });
-    
-    // Проверка надежности пароля при вводе
-    document.getElementById('register-password')?.addEventListener('input', function() {
-        secureAuth.showPasswordStrength(this.value, 'password-strength');
-    });
-    
-    // Форма активации ключа
-    document.getElementById('redeem-key-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
         
-        const key = document.getElementById('redeem-key').value;
-        
-        document.getElementById('redeem-error').style.display = 'none';
-        document.getElementById('redeem-success').style.display = 'none';
-        
-        try {
-            await api.redeemKey(key);
-            
-            document.getElementById('redeem-success').style.display = 'block';
-            document.getElementById('redeem-key').value = '';
-            
-            // Обновление списка ключей
-            loadKeys();
-        } catch (error) {
-            document.getElementById('redeem-error').textContent = error.message;
-            document.getElementById('redeem-error').style.display = 'block';
+        // Проверка надежности пароля при вводе
+        const passwordField = document.getElementById('register-password');
+        if (passwordField) {
+            passwordField.addEventListener('input', function() {
+                secureAuth.showPasswordStrength(this.value, 'password-strength');
+            });
         }
-    });
-    
-    // Кнопка создания приглашения
-    document.getElementById('generate-invite-button').addEventListener('click', async () => {
-        const button = document.getElementById('generate-invite-button');
-        button.disabled = true;
-        button.textContent = 'Создание...';
         
-        try {
-            await api.generateInvite();
-            loadInvites();
-        } catch (error) {
-            alert(`Ошибка создания приглашения: ${error.message}`);
-        } finally {
-            button.disabled = false;
-            button.textContent = 'Создать приглашение';
+        // Форма активации ключа
+        const redeemKeyForm = document.getElementById('redeem-key-form');
+        if (redeemKeyForm) {
+            redeemKeyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const key = document.getElementById('redeem-key')?.value || '';
+                const redeemError = document.getElementById('redeem-error');
+                const redeemSuccess = document.getElementById('redeem-success');
+                
+                if (redeemError) redeemError.style.display = 'none';
+                if (redeemSuccess) redeemSuccess.style.display = 'none';
+                
+                try {
+                    await api.redeemKey(key);
+                    
+                    if (redeemSuccess) redeemSuccess.style.display = 'block';
+                    const keyField = document.getElementById('redeem-key');
+                    if (keyField) keyField.value = '';
+                    
+                    // Обновление списка ключей
+                    loadKeys();
+                } catch (error) {
+                    if (redeemError) {
+                        redeemError.textContent = error.message;
+                        redeemError.style.display = 'block';
+                    }
+                }
+            });
         }
-    });
-    
-    // Форма установки лимитов приглашений
-    document.getElementById('set-invite-limits-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
         
-        const adminLimit = parseInt(document.getElementById('admin-limit-value').value);
-        const supportLimit = parseInt(document.getElementById('support-limit-value').value);
-        const userLimit = parseInt(document.getElementById('user-limit-value').value);
-        
-        document.getElementById('set-limits-error').style.display = 'none';
-        document.getElementById('set-limits-success').style.display = 'none';
-        
-        try {
-            await api.setInviteLimits(adminLimit, supportLimit, userLimit);
-            document.getElementById('set-limits-success').style.display = 'block';
-            
-            // Перезагрузка данных
-            setTimeout(() => {
-                loadInvites();
-            }, 2000);
-        } catch (error) {
-            document.getElementById('set-limits-error').textContent = error.message;
-            document.getElementById('set-limits-error').style.display = 'block';
+        // Кнопка создания приглашения
+        const generateInviteButton = document.getElementById('generate-invite-button');
+        if (generateInviteButton) {
+            generateInviteButton.addEventListener('click', async () => {
+                const button = document.getElementById('generate-invite-button');
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'Создание...';
+                }
+                
+                try {
+                    await api.generateInvite();
+                    loadInvites();
+                } catch (error) {
+                    alert(`Ошибка создания приглашения: ${error.message}`);
+                } finally {
+                    const button = document.getElementById('generate-invite-button');
+                    if (button) {
+                        button.disabled = false;
+                        button.textContent = 'Создать приглашение';
+                    }
+                }
+            });
         }
-    });
-    
-    // Кнопка генерации кода Discord
-    document.getElementById('generate-discord-code-button').addEventListener('click', async () => {
-        try {
-            const result = await api.generateDiscordCode();
-            
-            document.getElementById('discord-code').textContent = result.code;
-            document.getElementById('discord-code-card').style.display = 'block';
-        } catch (error) {
-            alert(`Ошибка генерации кода: ${error.message}`);
+        
+        // Форма установки лимитов приглашений
+        const setInviteLimitsForm = document.getElementById('set-invite-limits-form');
+        if (setInviteLimitsForm) {
+            setInviteLimitsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const adminLimit = parseInt(document.getElementById('admin-limit-value')?.value || '0');
+                const supportLimit = parseInt(document.getElementById('support-limit-value')?.value || '0');
+                const userLimit = parseInt(document.getElementById('user-limit-value')?.value || '0');
+                
+                const setLimitsError = document.getElementById('set-limits-error');
+                const setLimitsSuccess = document.getElementById('set-limits-success');
+                
+                if (setLimitsError) setLimitsError.style.display = 'none';
+                if (setLimitsSuccess) setLimitsSuccess.style.display = 'none';
+                
+                try {
+                    await api.setInviteLimits(adminLimit, supportLimit, userLimit);
+                    if (setLimitsSuccess) setLimitsSuccess.style.display = 'block';
+                    
+                    // Перезагрузка данных
+                    setTimeout(() => {
+                        loadInvites();
+                    }, 2000);
+                } catch (error) {
+                    if (setLimitsError) {
+                        setLimitsError.textContent = error.message;
+                        setLimitsError.style.display = 'block';
+                    }
+                }
+            });
         }
-    });
-    
-    // Форма генерации ключа (админ)
-    document.getElementById('generate-key-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
         
-        const duration = parseInt(document.getElementById('key-duration').value);
-        const userIdValue = document.getElementById('key-user').value;
-        const userId = userIdValue ? parseInt(userIdValue) : null;
-        const customKey = document.getElementById('key-custom').value.trim();
-        
-        document.getElementById('generate-key-error').style.display = 'none';
-        document.getElementById('generate-key-success').style.display = 'none';
-        
-        try {
-            const result = await api.generateKey(duration, userId, customKey || null);
-            
-            document.getElementById('generated-key').textContent = result.key;
-            document.getElementById('generate-key-success').style.display = 'block';
-        } catch (error) {
-            document.getElementById('generate-key-error').textContent = error.message;
-            document.getElementById('generate-key-error').style.display = 'block';
+        // Кнопка генерации кода Discord
+        const generateDiscordCodeButton = document.getElementById('generate-discord-code-button');
+        if (generateDiscordCodeButton) {
+            generateDiscordCodeButton.addEventListener('click', async () => {
+                try {
+                    const result = await api.generateDiscordCode();
+                    
+                    const discordCode = document.getElementById('discord-code');
+                    const discordCodeCard = document.getElementById('discord-code-card');
+                    
+                    if (discordCode) discordCode.textContent = result.code;
+                    if (discordCodeCard) discordCodeCard.style.display = 'block';
+                } catch (error) {
+                    alert(`Ошибка генерации кода: ${error.message}`);
+                }
+            });
         }
-    });
+        
+        // Форма генерации ключа (админ)
+        const generateKeyForm = document.getElementById('generate-key-form');
+        if (generateKeyForm) {
+            generateKeyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const duration = parseInt(document.getElementById('key-duration')?.value || '24');
+                const userIdValue = document.getElementById('key-user')?.value || '';
+                const userId = userIdValue ? parseInt(userIdValue) : null;
+                const customKey = (document.getElementById('key-custom')?.value || '').trim();
+                
+                const generateKeyError = document.getElementById('generate-key-error');
+                const generateKeySuccess = document.getElementById('generate-key-success');
+                
+                if (generateKeyError) generateKeyError.style.display = 'none';
+                if (generateKeySuccess) generateKeySuccess.style.display = 'none';
+                
+                try {
+                    const result = await api.generateKey(duration, userId, customKey || null);
+                    
+                    const generatedKey = document.getElementById('generated-key');
+                    if (generatedKey) generatedKey.textContent = result.key;
+                    if (generateKeySuccess) generateKeySuccess.style.display = 'block';
+                } catch (error) {
+                    if (generateKeyError) {
+                        generateKeyError.textContent = error.message;
+                        generateKeyError.style.display = 'block';
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Error setting up event handlers:", error);
+    }
 }
 
 // Запуск приложения при загрузке страницы
@@ -2102,93 +2327,124 @@ const notifications = {
     
     // Контейнер для уведомлений
     createContainer: function() {
-        let container = document.getElementById('notification-container');
-        
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'notification-container';
-            container.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 9999;
-                max-width: 350px;
-                max-height: 100vh;
-                overflow-y: auto;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-            `;
-            document.body.appendChild(container);
+        try {
+            let container = document.getElementById('notification-container');
+            
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 9999;
+                    max-width: 350px;
+                    max-height: 100vh;
+                    overflow-y: auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                `;
+                document.body.appendChild(container);
+            }
+            
+            return container;
+        } catch (error) {
+            console.error('Error creating notification container:', error);
+            return null;
         }
-        
-        return container;
     },
     
     // Создание уведомления
     show: function(message, type = 'info') {
-        const container = this.createContainer();
-        const notifyType = this.types[type] || this.types.info;
-        
-        // Создаем уведомление
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            border-left: 5px solid ${notifyType.color};
-            padding: 15px 20px;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: flex-start;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-            position: relative;
-        `;
-        
-        // Добавляем иконку
-        notification.innerHTML = `
-            <i class="fas ${notifyType.icon}" style="color: ${notifyType.color}; margin-right: 10px; font-size: 1.2rem;"></i>
-            <div style="flex-grow: 1">${message}</div>
-            <i class="fas fa-times" style="cursor: pointer; margin-left: 10px;"></i>
-        `;
-        
-        // Добавляем кнопку закрытия
-        const closeBtn = notification.querySelector('.fa-times');
-        closeBtn.addEventListener('click', () => {
-            this.close(notification);
-        });
-        
-        // Добавляем в контейнер
-        container.appendChild(notification);
-        
-        // Анимация появления
-        setTimeout(() => {
-            notification.style.transform = 'translateX(0)';
-        }, 10);
-        
-        // Автоматическое закрытие
-        if (notifyType.timeout) {
-            setTimeout(() => {
-                if (notification.parentNode) {
+        try {
+            const container = this.createContainer();
+            if (!container) {
+                console.error('Failed to create notification container');
+                return null;
+            }
+            
+            const notifyType = this.types[type] || this.types.info;
+            
+            // Создаем уведомление
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                background-color: var(--card-bg);
+                color: var(--text-color);
+                border-left: 5px solid ${notifyType.color};
+                padding: 15px 20px;
+                border-radius: 4px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                display: flex;
+                align-items: flex-start;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                position: relative;
+            `;
+            
+            // Добавляем иконку
+            notification.innerHTML = `
+                <i class="fas ${notifyType.icon}" style="color: ${notifyType.color}; margin-right: 10px; font-size: 1.2rem;"></i>
+                <div style="flex-grow: 1">${message}</div>
+                <i class="fas fa-times" style="cursor: pointer; margin-left: 10px;"></i>
+            `;
+            
+            // Добавляем кнопку закрытия
+            const closeBtn = notification.querySelector('.fa-times');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
                     this.close(notification);
-                }
-            }, notifyType.timeout);
+                });
+            }
+            
+            // Добавляем в контейнер
+            container.appendChild(notification);
+            
+            // Анимация появления
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 10);
+            
+            // Автоматическое закрытие
+            if (notifyType.timeout) {
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        this.close(notification);
+                    }
+                }, notifyType.timeout);
+            }
+            
+            return notification;
+        } catch (error) {
+            console.error('Error showing notification:', error);
+            return null;
         }
-        
-        return notification;
     },
     
     // Закрытие уведомления
     close: function(notification) {
-        notification.style.transform = 'translateX(100%)';
-        notification.style.opacity = '0';
-        
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
+        try {
+            if (!notification) return;
+            
+            notification.style.transform = 'translateX(100%)';
+            notification.style.opacity = '0';
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        } catch (error) {
+            console.error('Error closing notification:', error);
+            // Принудительное удаление при ошибке
+            try {
+                if (notification && notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            } catch (e) {
+                console.error('Failed to force remove notification:', e);
             }
-        }, 300);
+        }
     }
 };
 
@@ -2232,15 +2488,30 @@ const errorHandler = {
     
     // Глобальный обработчик необработанных ошибок
     setupGlobalHandler: function() {
-        window.addEventListener('error', (event) => {
-            console.error('Unhandled error:', event.error);
-            notifications.show(i18n.get('error_unexpected'), 'error');
-        });
-        
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('Unhandled promise rejection:', event.reason);
-            notifications.show(i18n.get('error_unexpected'), 'error');
-        });
+        try {
+            window.addEventListener('error', (event) => {
+                console.error('Unhandled error:', event.error);
+                try {
+                    notifications.show(i18n.get('error_unexpected'), 'error');
+                } catch (e) {
+                    console.error('Failed to show notification:', e);
+                    alert('Произошла непредвиденная ошибка');
+                }
+            });
+            
+            window.addEventListener('unhandledrejection', (event) => {
+                console.error('Unhandled promise rejection:', event.reason);
+                try {
+                    notifications.show(i18n.get('error_unexpected'), 'error');
+                } catch (e) {
+                    console.error('Failed to show notification:', e);
+                    alert('Произошла непредвиденная ошибка при асинхронной операции');
+                }
+            });
+            console.log('Global error handlers set up successfully');
+        } catch (e) {
+            console.error('Failed to set up global error handlers:', e);
+        }
     }
 };
 
@@ -2325,244 +2596,4 @@ const secureAuth = {
     }
 };
 
-// Инициализация приложения
-async function initApp() {
-    // Инициализация темы
-    themeUtils.init();
-    
-    // Инициализация локализации
-    i18n.init();
-    
-    // Настройка обработчика ошибок
-    errorHandler.setupGlobalHandler();
-    
-    // Проверка авторизации
-    const isAuthenticated = await auth.checkAuth();
-    
-    // Определение стартовой страницы
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-        if (hash === 'login' || hash === 'register') {
-            if (isAuthenticated) {
-                navigation.navigateTo('home');
-            } else {
-                navigation.navigateTo(hash);
-            }
-        } else if (['keys', 'invites', 'discord', 'admin'].includes(hash)) {
-            if (isAuthenticated) {
-                navigation.navigateTo(hash);
-            } else {
-                navigation.navigateTo('login');
-            }
-        } else {
-            navigation.navigateTo('home');
-        }
-    } else {
-        navigation.navigateTo('home');
-    }
-    
-    // Инициализация утилит для работы с таблицами
-    tableUtils.init();
-    
-    // Обработчики событий
-    
-    // Обработка навигации
-    document.querySelectorAll('.navbar-nav a').forEach(link => {
-        link.addEventListener('click', (e) => {
-            if (link.getAttribute('href').startsWith('#')) {
-                e.preventDefault();
-                const page = link.getAttribute('href').substring(1) || 'home';
-                navigation.navigateTo(page);
-            }
-        });
-    });
-    
-    // Обработка хэша URL
-    window.addEventListener('hashchange', () => {
-        const hash = window.location.hash.substring(1) || 'home';
-        navigation.navigateTo(hash);
-    });
-    
-    // Выход из системы
-    document.getElementById('logout-button').addEventListener('click', (e) => {
-        e.preventDefault();
-        auth.logout();
-    });
-    
-    // Форма входа
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const username = document.getElementById('login-username').value;
-        const password = document.getElementById('login-password').value;
-        
-        document.getElementById('login-error').style.display = 'none';
-        
-        try {
-            const result = await api.login(username, password);
-            token = result.token;
-            localStorage.setItem('token', token);
-            
-            await auth.checkAuth();
-            navigation.navigateTo('home');
-        } catch (error) {
-            document.getElementById('login-error').textContent = error.message;
-            document.getElementById('login-error').style.display = 'block';
-        }
-    });
-    
-    // Форма регистрации
-    document.getElementById('register-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const username = document.getElementById('register-username').value;
-        const email = document.getElementById('register-email').value;
-        const password = document.getElementById('register-password').value;
-        const confirmPassword = document.getElementById('register-confirm-password').value;
-        const invite_code = document.getElementById('register-invite').value;
-        
-        // Проверка совпадения паролей
-        if (password !== confirmPassword) {
-            document.getElementById('register-error').textContent = i18n.get('error_passwords_match');
-            document.getElementById('register-error').style.display = 'block';
-            return;
-        }
-        
-        // Проверка сложности пароля
-        const passwordStrength = secureAuth.checkPasswordStrength(password);
-        if (passwordStrength.score < 2) {
-            document.getElementById('register-error').textContent = i18n.get('password_too_weak');
-            document.getElementById('register-error').style.display = 'block';
-            return;
-        }
-        
-        document.getElementById('register-error').style.display = 'none';
-        
-        try {
-            const registerButton = document.querySelector('#register-form button[type="submit"]');
-            registerButton.disabled = true;
-            registerButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Регистрация...';
-            
-            await api.register(username, email, password, invite_code);
-            
-            // Показываем уведомление об успешной регистрации
-            notifications.show(i18n.get('register_success'), 'success');
-            
-            // Автоматический вход после регистрации
-            const loginResult = await api.login(username, password);
-            token = loginResult.token;
-            localStorage.setItem('token', token);
-            
-            await auth.checkAuth();
-            navigation.navigateTo('keys');
-        } catch (error) {
-            document.getElementById('register-error').textContent = error.message;
-            document.getElementById('register-error').style.display = 'block';
-        } finally {
-            const registerButton = document.querySelector('#register-form button[type="submit"]');
-            registerButton.disabled = false;
-            registerButton.textContent = 'Зарегистрироваться';
-        }
-    });
-    
-    // Форма активации ключа
-    document.getElementById('redeem-key-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const key = document.getElementById('redeem-key').value;
-        
-        document.getElementById('redeem-error').style.display = 'none';
-        document.getElementById('redeem-success').style.display = 'none';
-        
-        try {
-            await api.redeemKey(key);
-            
-            document.getElementById('redeem-success').style.display = 'block';
-            document.getElementById('redeem-key').value = '';
-            
-            // Обновление списка ключей
-            loadKeys();
-        } catch (error) {
-            document.getElementById('redeem-error').textContent = error.message;
-            document.getElementById('redeem-error').style.display = 'block';
-        }
-    });
-    
-    // Кнопка создания приглашения
-    document.getElementById('generate-invite-button').addEventListener('click', async () => {
-        const button = document.getElementById('generate-invite-button');
-        button.disabled = true;
-        button.textContent = 'Создание...';
-        
-        try {
-            await api.generateInvite();
-            loadInvites();
-        } catch (error) {
-            alert(`Ошибка создания приглашения: ${error.message}`);
-        } finally {
-            button.disabled = false;
-            button.textContent = 'Создать приглашение';
-        }
-    });
-    
-    // Форма установки лимитов приглашений
-    document.getElementById('set-invite-limits-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const adminLimit = parseInt(document.getElementById('admin-limit-value').value);
-        const supportLimit = parseInt(document.getElementById('support-limit-value').value);
-        const userLimit = parseInt(document.getElementById('user-limit-value').value);
-        
-        document.getElementById('set-limits-error').style.display = 'none';
-        document.getElementById('set-limits-success').style.display = 'none';
-        
-        try {
-            await api.setInviteLimits(adminLimit, supportLimit, userLimit);
-            document.getElementById('set-limits-success').style.display = 'block';
-            
-            // Перезагрузка данных
-            setTimeout(() => {
-                loadInvites();
-            }, 2000);
-        } catch (error) {
-            document.getElementById('set-limits-error').textContent = error.message;
-            document.getElementById('set-limits-error').style.display = 'block';
-        }
-    });
-    
-    // Кнопка генерации кода Discord
-    document.getElementById('generate-discord-code-button').addEventListener('click', async () => {
-        try {
-            const result = await api.generateDiscordCode();
-            
-            document.getElementById('discord-code').textContent = result.code;
-            document.getElementById('discord-code-card').style.display = 'block';
-        } catch (error) {
-            alert(`Ошибка генерации кода: ${error.message}`);
-        }
-    });
-    
-    // Форма генерации ключа (админ)
-    document.getElementById('generate-key-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const duration = parseInt(document.getElementById('key-duration').value);
-        const userIdValue = document.getElementById('key-user').value;
-        const userId = userIdValue ? parseInt(userIdValue) : null;
-        const customKey = document.getElementById('key-custom').value.trim();
-        
-        document.getElementById('generate-key-error').style.display = 'none';
-        document.getElementById('generate-key-success').style.display = 'none';
-        
-        try {
-            const result = await api.generateKey(duration, userId, customKey || null);
-            
-            document.getElementById('generated-key').textContent = result.key;
-            document.getElementById('generate-key-success').style.display = 'block';
-        } catch (error) {
-            document.getElementById('generate-key-error').textContent = error.message;
-            document.getElementById('generate-key-error').style.display = 'block';
-        }
-    });
-}
 // ... existing code ... 
