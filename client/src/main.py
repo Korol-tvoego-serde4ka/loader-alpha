@@ -10,9 +10,7 @@ import subprocess
 import atexit
 import signal
 import datetime
-import ctypes
 import psutil
-import hashlib
 import logging
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QLabel, QLineEdit, QPushButton, 

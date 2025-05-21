@@ -192,7 +192,45 @@ sudo systemctl enable postgresql
 
 ### Настройка Discord бота
 1. Перейдите на [Discord Developer Portal](https://discord.com/developers/applications)
-2. Создайте новое приложение
-3. В разделе "Bot" создайте бота и скопируйте токен
-4. В разделе "OAuth2" добавьте redirect URL
-5. Включите интенты: Message Content, Server Members 
+2. Создайте новое приложение:
+   - Нажмите кнопку "New Application"
+   - Укажите название для вашего приложения
+   - Примите условия использования и нажмите "Create"
+
+3. В разделе "Bot" создайте бота:
+   - Нажмите на кнопку "Add Bot"
+   - Подтвердите создание бота
+   - В настройках бота включите следующие опции:
+     - PUBLIC BOT: Отключено (если не планируете добавлять бота на разные серверы)
+     - REQUIRES OAUTH2 CODE GRANT: Отключено
+     - Включите все "Privileged Gateway Intents":
+       - PRESENCE INTENT
+       - SERVER MEMBERS INTENT
+       - MESSAGE CONTENT INTENT
+
+4. Скопируйте TOKEN бота (кнопка "Reset Token" / "Copy"):
+   - Токен должен оставаться конфиденциальным и использоваться в .env файле
+   - Запишите его в параметр DISCORD_TOKEN в файле .env
+
+5. В разделе "OAuth2":
+   - Выберите подраздел "General"
+   - Добавьте Redirect URL: http://your-domain.com/auth/discord/callback
+   - Нажмите "Save Changes"
+   - Скопируйте CLIENT ID и CLIENT SECRET для настройки .env файла
+
+6. Создайте URL для добавления бота на сервер:
+   - Выберите подраздел "URL Generator"
+   - В "Scopes" выберите:
+     - bot
+     - applications.commands
+   - В "Bot Permissions" выберите:
+     - Manage Roles
+     - Send Messages
+     - Use Slash Commands
+     - Read Message History
+   - Используйте сгенерированный URL для добавления бота на ваш сервер
+
+7. Создайте необходимые роли на вашем Discord сервере:
+   - Admin (для администраторов)
+   - Support (для саппорта)
+   - Subs (для подписчиков с активными ключами)

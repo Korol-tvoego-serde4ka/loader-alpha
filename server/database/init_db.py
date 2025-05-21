@@ -30,6 +30,10 @@ def create_admin_user(db_session):
         print(f"Пользователь {admin_username} уже существует.")
         return existing_user
     
+    # Проверка наличия пароля в переменных окружения
+    if os.getenv("ADMIN_PASSWORD") is None:
+        print("ВНИМАНИЕ: Используется пароль по умолчанию. Настоятельно рекомендуется установить ADMIN_PASSWORD в .env файле")
+    
     # Создание нового пользователя-администратора
     admin = User(
         username=admin_username,
@@ -43,6 +47,7 @@ def create_admin_user(db_session):
     db_session.refresh(admin)
     
     print(f"Создан пользователь-администратор: {admin_username}")
+    print("Убедитесь, что вы изменили пароль администратора при первом входе")
     return admin
 
 def create_initial_invite(db_session, admin):

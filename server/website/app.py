@@ -59,7 +59,7 @@ class Login(Resource):
         db = get_db()
         user = db.query(User).filter(User.username == username).first()
         
-        if not user or not verify_password(password, user.password_hash):
+        if not user or not pwd_context.verify(password, user.password_hash):
             return {"message": "Неверное имя пользователя или пароль"}, 401
         
         if user.is_banned:
