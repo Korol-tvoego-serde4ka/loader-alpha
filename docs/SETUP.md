@@ -4,7 +4,7 @@
 
 ### Требования
 - Python 3.8+
-- PostgreSQL
+- PostgreSQL 12+
 - Node.js 14+
 - npm
 - Discord Developer Account
@@ -22,7 +22,15 @@ cd loader-alpha/server
 pip install -r requirements.txt
 ```
 
-3. Настройте базу данных PostgreSQL:
+3. Установите PostgreSQL, если он еще не установлен:
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+```
+
+4. Настройте базу данных PostgreSQL:
 ```bash
 sudo -u postgres psql
 postgres=# CREATE DATABASE loader_alpha;
@@ -31,7 +39,7 @@ postgres=# GRANT ALL PRIVILEGES ON DATABASE loader_alpha TO loader_user;
 postgres=# \q
 ```
 
-4. Настройте переменные окружения (создайте .env файл):
+5. Настройте переменные окружения (создайте .env файл):
 ```
    DB_NAME=loader_alpha
    DB_USER=loader_user
@@ -48,29 +56,29 @@ postgres=# \q
    ADMIN_PASSWORD=admin_password
    ADMIN_EMAIL=admin@example.com
    
-   # ID ролей Discord (рекомендуется использовать вместо имен)
+   # ID ролей Discord (обязательно для работы бота)
    DISCORD_ADMIN_ROLE_ID=123456789012345678
    DISCORD_SUPPORT_ROLE_ID=123456789012345678
    DISCORD_SUBSCRIBER_ROLE_ID=123456789012345678
 ```
 
-5. Инициализируйте базу данных:
+6. Инициализируйте базу данных:
 ```bash
 python database/init_db.py
 ```
 
-6. Создайте директории для загрузки клиента:
+7. Создайте директории для загрузки клиента:
 ```bash
 mkdir -p website/static/downloads
 ```
 
-7. Скопируйте собранный лоадер в директорию загрузок:
+8. Скопируйте собранный лоадер в директорию загрузок:
 ```bash
 # После сборки клиента на Windows
 cp /путь/к/собранному/minecraft-loader-alpha.exe website/static/downloads/
 ```
 
-8. Запустите сервисы:
+9. Запустите сервисы:
 ```bash
 # Запуск веб-сервера
 cd website
@@ -81,7 +89,23 @@ cd discord_bot
 python bot.py
 ```
 
-9. Настройте Nginx для проксирования запросов (опционально):
+10. Для запуска сервисов в фоновом режиме можно использовать:
+```bash
+# Через nohup
+nohup python app.py > app.log 2>&1 &
+nohup python bot.py > bot.log 2>&1 &
+
+# Или через screen
+screen -S website
+python app.py
+# Нажмите Ctrl+A, затем D для отсоединения от сессии
+
+screen -S discord-bot
+python bot.py
+# Нажмите Ctrl+A, затем D для отсоединения от сессии
+```
+
+11. Настройте Nginx для проксирования запросов (опционально):
 ```bash
 sudo apt install nginx
 sudo nano /etc/nginx/sites-available/loader-alpha
@@ -141,6 +165,8 @@ pyinstaller --onefile --noconsole --icon=assets/icon.ico src/main.py --name mine
 
 2. Поместите файл конфигурации рядом с исполняемым файлом.
 
+3. Для использования лоадера необходимо поместить его в директорию вашего клиента Minecraft или указать путь к нему в настройках конфигурации.
+
 ## Обслуживание
 
 ### Автозапуск сервисов (Ubuntu)
@@ -153,13 +179,14 @@ sudo nano /etc/systemd/system/loader-website.service
 ```
 [Unit]
 Description=Minecraft Loader Alpha Website
-After=network.target
+After=network.target postgresql.service
 
 [Service]
 User=your_user
 WorkingDirectory=/path/to/loader-alpha/server/website
 ExecStart=/usr/bin/python3 app.py
 Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
@@ -178,6 +205,7 @@ User=your_user
 WorkingDirectory=/path/to/loader-alpha/server/discord_bot
 ExecStart=/usr/bin/python3 bot.py
 Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
@@ -197,15 +225,6 @@ sudo systemctl status loader-website.service
 sudo systemctl status loader-discord-bot.service
 ```
 
-### Установка PostgreSQL
-```bash
-# Для Ubuntu 20.04
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-```
-
 ### Настройка Discord бота
 1. Перейдите на [Discord Developer Portal](https://discord.com/developers/applications)
 2. Создайте новое приложение:
@@ -219,7 +238,7 @@ sudo systemctl enable postgresql
    - В настройках бота включите следующие опции:
      - PUBLIC BOT: Отключено (если не планируете добавлять бота на разные серверы)
      - REQUIRES OAUTH2 CODE GRANT: Отключено
-     - Включите все "Privileged Gateway Intents":
+     - Включите все необходимые "Privileged Gateway Intents":
        - PRESENCE INTENT
        - SERVER MEMBERS INTENT
        - MESSAGE CONTENT INTENT
@@ -258,4 +277,21 @@ sudo systemctl enable postgresql
      - DISCORD_ADMIN_ROLE_ID=123456789012345678 (замените на ID вашей роли Admin)
      - DISCORD_SUPPORT_ROLE_ID=123456789012345678 (замените на ID вашей роли Support)
      - DISCORD_SUBSCRIBER_ROLE_ID=123456789012345678 (замените на ID вашей роли Subs)
-   - ВАЖНО: Бот использует только ID ролей, не имена. Вы можете менять названия ролей в Discord без изменения кода.
+   
+   **ВАЖНО**: Бот использует **только ID ролей**, не имена ролей. Необходимо правильно указать ID ролей в .env файле, иначе функции связанные с проверкой ролей работать не будут.
+
+### Обновление discord.py
+Если у вас возникают ошибки с StickerFormatType.unknown_4 или проблемы с подключением, обновите discord.py до последней версии:
+
+```bash
+pip install -U discord.py
+```
+
+### Генерация безопасного SECRET_KEY
+Для генерации надежного ключа JWT можно использовать:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Полученный ключ скопируйте в .env файл в параметр SECRET_KEY.
