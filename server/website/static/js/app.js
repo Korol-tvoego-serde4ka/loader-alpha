@@ -385,7 +385,7 @@ const navigation = {
             let showPage = true;
             
             // Проверка доступа к странице
-            if (page === 'admin' && (!userData || !userData.is_admin)) {
+            if (page === 'admin' && (!userData || (!userData.is_admin && !userData.is_support))) {
                 showPage = false;
                 page = 'home';
                 this.currentPage = 'home';
@@ -414,25 +414,25 @@ const navigation = {
                 // Выполняем дополнительные действия при переходе на определенные страницы
                 if (page === 'keys') {
                     try {
-                        loadKeys();
+                    loadKeys();
                     } catch (e) {
                         console.error('Error loading keys:', e);
                     }
                 } else if (page === 'invites') {
                     try {
-                        loadInvites();
+                    loadInvites();
                     } catch (e) {
                         console.error('Error loading invites:', e);
                     }
                 } else if (page === 'discord') {
                     try {
-                        loadDiscordStatus();
+                    loadDiscordStatus();
                     } catch (e) {
                         console.error('Error loading discord status:', e);
                     }
                 } else if (page === 'admin') {
                     try {
-                        loadAdminData();
+                    loadAdminData();
                     } catch (e) {
                         console.error('Error loading admin data:', e);
                     }
@@ -557,7 +557,7 @@ const auth = {
         localStorage.removeItem('token');
         
         try {
-            // Скрытие элементов для авторизованных пользователей
+        // Скрытие элементов для авторизованных пользователей
             const loginButtons = document.getElementById('login-buttons');
             const userInfo = document.getElementById('user-info');
             const homeButtons = document.getElementById('home-buttons');
@@ -578,9 +578,9 @@ const auth = {
             if (homeButtons) homeButtons.style.display = 'block';
             if (downloadButton) downloadButton.style.display = 'none';
             if (navAdmin) navAdmin.style.display = 'none';
-            
-            // Переход на главную страницу
-            navigation.navigateTo('home');
+        
+        // Переход на главную страницу
+        navigation.navigateTo('home');
         } catch (error) {
             console.error('Error during logout:', error);
         }
@@ -611,12 +611,12 @@ async function loadKeys() {
                 dataCache.updateCache('keys', keysData.keys);
             }
             
-            const keys = keysData.keys.filter(key => key.is_active);
-            
-            if (keys.length === 0) {
+        const keys = keysData.keys.filter(key => key.is_active);
+        
+        if (keys.length === 0) {
                 if (noKeys) noKeys.style.display = 'block';
-            } else {
-                const tableBody = document.getElementById('keys-table-body');
+        } else {
+            const tableBody = document.getElementById('keys-table-body');
                 if (tableBody) tableBody.innerHTML = '';
                 
                 // Фильтрация по поисковому запросу
@@ -632,15 +632,15 @@ async function loadKeys() {
                 
                 if (tableBody) {
                     pageKeys.forEach(key => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${key.key}</td>
-                            <td>${utils.formatDate(key.created_at)}</td>
-                            <td>${utils.formatDate(key.expires_at)}</td>
-                            <td>${utils.formatTimeLeft(key.time_left)}</td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${key.key}</td>
+                    <td>${utils.formatDate(key.created_at)}</td>
+                    <td>${utils.formatDate(key.expires_at)}</td>
+                    <td>${utils.formatTimeLeft(key.time_left)}</td>
+                `;
+                tableBody.appendChild(row);
+            });
                 }
                 
                 // Добавляем пагинацию
@@ -661,10 +661,10 @@ async function loadKeys() {
                 }
                 
                 if (keysList) keysList.style.display = 'block';
-            }
-        } catch (error) {
-            console.error('Ошибка при загрузке ключей:', error);
-        } finally {
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке ключей:', error);
+    } finally {
             if (keysLoading) keysLoading.style.display = 'none';
         }
     } catch (error) {
@@ -688,9 +688,9 @@ async function loadInvites() {
         if (inviteLimits) inviteLimits.style.display = 'none';
         if (adminInviteLimits) adminInviteLimits.style.display = 'none';
         if (deleteSelectedInvitesButton) deleteSelectedInvitesButton.style.display = 'none';
-        
-        try {
-            // Загрузка инвайтов и лимитов одновременно
+    
+    try {
+        // Загрузка инвайтов и лимитов одновременно
             let invitesData, limitsData;
             
             if (dataCache.isCacheValid('invites')) {
@@ -698,17 +698,17 @@ async function loadInvites() {
                 limitsData = dataCache.inviteLimits;
             } else {
                 [invitesData, limitsData] = await Promise.all([
-                api.getInvites(),
-                api.getInviteLimits()
-            ]);
+            api.getInvites(),
+            api.getInviteLimits()
+        ]);
                 
                 dataCache.updateCache('invites', invitesData.invites);
                 dataCache.updateCache('inviteLimits', limitsData);
             }
-            
-            const invites = invitesData.invites;
-            
-            // Отображение информации о лимитах
+        
+        const invites = invitesData.invites;
+        
+        // Отображение информации о лимитах
             const monthlyLimit = document.getElementById('monthly-limit');
             const usedInvites = document.getElementById('used-invites');
             const remainingInvites = document.getElementById('remaining-invites');
@@ -717,9 +717,9 @@ async function loadInvites() {
             if (usedInvites) usedInvites.textContent = limitsData.used_invites;
             if (remainingInvites) remainingInvites.textContent = limitsData.remaining_invites;
             if (inviteLimits) inviteLimits.style.display = 'block';
-            
-            // Отображение панели управления лимитами для админов
-            if (userData && userData.is_admin) {
+        
+        // Отображение панели управления лимитами для админов
+        if (userData && userData.is_admin) {
                 const adminLimitValue = document.getElementById('admin-limit-value');
                 const supportLimitValue = document.getElementById('support-limit-value');
                 const userLimitValue = document.getElementById('user-limit-value');
@@ -731,15 +731,15 @@ async function loadInvites() {
                 if (adminInviteLimits) adminInviteLimits.style.display = 'block';
                 if (invitesActionsHeader) invitesActionsHeader.style.display = 'table-cell';
                 if (deleteSelectedInvitesButton) deleteSelectedInvitesButton.style.display = 'inline-block';
-            } else {
+        } else {
                 const invitesActionsHeader = document.getElementById('invites-actions-header');
                 if (invitesActionsHeader) invitesActionsHeader.style.display = 'none';
-            }
-            
-            // Проверка, есть ли инвайты для отображения
-            if (invites.length === 0) {
+        }
+        
+        // Проверка, есть ли инвайты для отображения
+        if (invites.length === 0) {
                 if (noInvites) noInvites.style.display = 'block';
-            } else {
+        } else {
                 // Фильтрация по поисковому запросу
                 const searchQuery = document.getElementById('invites-search')?.value?.toLowerCase() || '';
                 let filteredInvites = invites;
@@ -755,62 +755,62 @@ async function loadInvites() {
                 // Получаем данные только для текущей страницы
                 const pageInvites = pagination.getPageData('invites', filteredInvites);
                 
-                const tableBody = document.getElementById('invites-table-body');
+            const tableBody = document.getElementById('invites-table-body');
                 if (tableBody) tableBody.innerHTML = '';
-                
+            
                 if (tableBody) {
                     pageInvites.forEach(invite => {
-                        const row = document.createElement('tr');
-                        const status = invite.used ? 'Использован' : 'Активен';
-                        
-                        // Добавляем чекбокс для выбора
-                        const checkboxCell = document.createElement('td');
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.className = 'invite-checkbox';
-                        checkbox.dataset.inviteId = invite.id;
-                        checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
-                        checkboxCell.appendChild(checkbox);
-                        row.appendChild(checkboxCell);
-                        
-                        // Добавляем информацию об инвайте
-                        row.innerHTML += `
-                            <td>${invite.code}</td>
-                            <td>${utils.formatDate(invite.created_at)}</td>
-                            <td>${utils.formatDate(invite.expires_at)}</td>
-                            <td>${status}</td>
-                            <td>${invite.created_by.username}</td>
-                            <td>${invite.used_by ? invite.used_by : 'Не использован'}</td>
-                        `;
-                        
-                        // Добавляем кнопку удаления для админов
-                        if (userData && userData.is_admin) {
-                            const actionCell = document.createElement('td');
-                            const deleteButton = document.createElement('button');
-                            deleteButton.className = 'btn btn-danger btn-sm';
-                            deleteButton.textContent = 'Удалить';
-                            deleteButton.addEventListener('click', async () => {
-                                if (confirm('Вы уверены, что хотите удалить этот инвайт?')) {
-                                    try {
+                const row = document.createElement('tr');
+                const status = invite.used ? 'Использован' : 'Активен';
+                
+                // Добавляем чекбокс для выбора
+                const checkboxCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'invite-checkbox';
+                checkbox.dataset.inviteId = invite.id;
+                checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+                
+                // Добавляем информацию об инвайте
+                row.innerHTML += `
+                    <td>${invite.code}</td>
+                    <td>${utils.formatDate(invite.created_at)}</td>
+                    <td>${utils.formatDate(invite.expires_at)}</td>
+                    <td>${status}</td>
+                    <td>${invite.created_by.username}</td>
+                    <td>${invite.used_by ? invite.used_by : 'Не использован'}</td>
+                `;
+                
+                // Добавляем кнопку удаления для админов
+                if (userData && userData.is_admin) {
+                    const actionCell = document.createElement('td');
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'btn btn-danger btn-sm';
+                    deleteButton.textContent = 'Удалить';
+                    deleteButton.addEventListener('click', async () => {
+                        if (confirm('Вы уверены, что хотите удалить этот инвайт?')) {
+                            try {
                                         deleteButton.disabled = true;
                                         deleteButton.textContent = 'Удаление...';
                                         
-                                        await api.deleteInvite(invite.id);
+                                await api.deleteInvite(invite.id);
                                         dataCache.clearCache('invites'); // Очищаем кэш
-                                        loadInvites(); // Перезагрузка списка после удаления
-                                    } catch (error) {
-                                        alert(`Ошибка при удалении инвайта: ${error.message}`);
+                                loadInvites(); // Перезагрузка списка после удаления
+                            } catch (error) {
+                                alert(`Ошибка при удалении инвайта: ${error.message}`);
                                         deleteButton.disabled = false;
                                         deleteButton.textContent = 'Удалить';
-                                    }
-                                }
-                            });
-                            actionCell.appendChild(deleteButton);
-                            row.appendChild(actionCell);
+                            }
                         }
-                        
-                        tableBody.appendChild(row);
                     });
+                    actionCell.appendChild(deleteButton);
+                    row.appendChild(actionCell);
+                }
+                
+                tableBody.appendChild(row);
+            });
                 }
                 
                 // Добавляем пагинацию
@@ -831,50 +831,50 @@ async function loadInvites() {
                 }
                 
                 if (invitesList) invitesList.style.display = 'block';
-                
-                // Настройка обработчика для кнопки "Выбрать все"
-                const selectAllCheckbox = document.getElementById('select-all-invites');
+            
+            // Настройка обработчика для кнопки "Выбрать все"
+            const selectAllCheckbox = document.getElementById('select-all-invites');
                 if (selectAllCheckbox) {
-                    selectAllCheckbox.checked = false;
-                    selectAllCheckbox.addEventListener('change', () => {
-                        document.querySelectorAll('.invite-checkbox:not([disabled])').forEach(checkbox => {
-                            checkbox.checked = selectAllCheckbox.checked;
-                        });
-                    });
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.addEventListener('change', () => {
+                document.querySelectorAll('.invite-checkbox:not([disabled])').forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            });
                 }
-                
-                // Настройка обработчика для кнопки "Удалить выбранные"
+            
+            // Настройка обработчика для кнопки "Удалить выбранные"
                 const deleteSelectedButton = document.getElementById('delete-selected-invites-button');
                 if (deleteSelectedButton) {
                     deleteSelectedButton.addEventListener('click', async () => {
-                        const selectedInvites = Array.from(document.querySelectorAll('.invite-checkbox:checked'))
-                            .map(checkbox => parseInt(checkbox.dataset.inviteId));
-                        
-                        if (selectedInvites.length === 0) {
-                            alert('Выберите инвайты для удаления');
-                            return;
-                        }
-                        
-                        if (confirm(`Вы уверены, что хотите удалить ${selectedInvites.length} инвайтов?`)) {
-                            try {
+                const selectedInvites = Array.from(document.querySelectorAll('.invite-checkbox:checked'))
+                    .map(checkbox => parseInt(checkbox.dataset.inviteId));
+                
+                if (selectedInvites.length === 0) {
+                    alert('Выберите инвайты для удаления');
+                    return;
+                }
+                
+                if (confirm(`Вы уверены, что хотите удалить ${selectedInvites.length} инвайтов?`)) {
+                    try {
                                 deleteSelectedButton.disabled = true;
                                 deleteSelectedButton.textContent = 'Удаление...';
-                                
-                                await api.deleteMultipleInvites(selectedInvites);
+                        
+                        await api.deleteMultipleInvites(selectedInvites);
                                 dataCache.clearCache('invites'); // Очищаем кэш
-                                loadInvites(); // Перезагрузка списка после удаления
-                            } catch (error) {
-                                alert(`Ошибка при удалении инвайтов: ${error.message}`);
+                        loadInvites(); // Перезагрузка списка после удаления
+                    } catch (error) {
+                        alert(`Ошибка при удалении инвайтов: ${error.message}`);
                                 deleteSelectedButton.disabled = false;
                                 deleteSelectedButton.textContent = 'Удалить выбранные';
-                            }
-                        }
-                    });
+                    }
                 }
-            }
-        } catch (error) {
-            console.error('Ошибка при загрузке инвайтов:', error);
-        } finally {
+            });
+                }
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке инвайтов:', error);
+    } finally {
             if (invitesLoading) invitesLoading.style.display = 'none';
         }
     } catch (error) {
@@ -1809,31 +1809,31 @@ async function initApp() {
         // Настройка обработчика ошибок
         errorHandler.setupGlobalHandler();
         
-        // Проверка авторизации
-        const isAuthenticated = await auth.checkAuth();
-        
-        // Определение стартовой страницы
-        const hash = window.location.hash.substring(1);
-        if (hash) {
-            if (hash === 'login' || hash === 'register') {
-                if (isAuthenticated) {
-                    navigation.navigateTo('home');
-                } else {
-                    navigation.navigateTo(hash);
-                }
-            } else if (['keys', 'invites', 'discord', 'admin'].includes(hash)) {
-                if (isAuthenticated) {
-                    navigation.navigateTo(hash);
-                } else {
-                    navigation.navigateTo('login');
-                }
-            } else {
+    // Проверка авторизации
+    const isAuthenticated = await auth.checkAuth();
+    
+    // Определение стартовой страницы
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+        if (hash === 'login' || hash === 'register') {
+            if (isAuthenticated) {
                 navigation.navigateTo('home');
+            } else {
+                navigation.navigateTo(hash);
+            }
+        } else if (['keys', 'invites', 'discord', 'admin'].includes(hash)) {
+            if (isAuthenticated) {
+                navigation.navigateTo(hash);
+            } else {
+                navigation.navigateTo('login');
             }
         } else {
             navigation.navigateTo('home');
         }
-        
+    } else {
+        navigation.navigateTo('home');
+    }
+    
         // Инициализация утилит для работы с таблицами
         tableUtils.init();
         
@@ -1876,52 +1876,52 @@ async function initApp() {
 // Настройка обработчиков событий
 function setupEventHandlers() {
     try {
-        // Обработка навигации
-        document.querySelectorAll('.navbar-nav a').forEach(link => {
-            link.addEventListener('click', (e) => {
+    // Обработка навигации
+    document.querySelectorAll('.navbar-nav a').forEach(link => {
+        link.addEventListener('click', (e) => {
                 if (link.getAttribute('href')?.startsWith('#')) {
-                    e.preventDefault();
-                    const page = link.getAttribute('href').substring(1) || 'home';
-                    navigation.navigateTo(page);
-                }
-            });
+                e.preventDefault();
+                const page = link.getAttribute('href').substring(1) || 'home';
+                navigation.navigateTo(page);
+            }
         });
-        
-        // Обработка хэша URL
-        window.addEventListener('hashchange', () => {
-            const hash = window.location.hash.substring(1) || 'home';
-            navigation.navigateTo(hash);
-        });
-        
-        // Выход из системы
+    });
+    
+    // Обработка хэша URL
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.substring(1) || 'home';
+        navigation.navigateTo(hash);
+    });
+    
+    // Выход из системы
         const logoutButton = document.getElementById('logout-button');
         if (logoutButton) {
             logoutButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                auth.logout();
-            });
+        e.preventDefault();
+        auth.logout();
+    });
         }
-        
-        // Форма входа
+    
+    // Форма входа
         const loginForm = document.getElementById('login-form');
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
+        e.preventDefault();
+        
                 const username = document.getElementById('login-username')?.value || '';
                 const password = document.getElementById('login-password')?.value || '';
                 const loginError = document.getElementById('login-error');
-                
+        
                 if (loginError) loginError.style.display = 'none';
-                
-                try {
-                    const result = await api.login(username, password);
-                    token = result.token;
-                    localStorage.setItem('token', token);
-                    
-                    await auth.checkAuth();
-                    navigation.navigateTo('home');
-                } catch (error) {
+        
+        try {
+            const result = await api.login(username, password);
+            token = result.token;
+            localStorage.setItem('token', token);
+            
+            await auth.checkAuth();
+            navigation.navigateTo('home');
+        } catch (error) {
                     if (loginError) {
                         loginError.textContent = error.message;
                         loginError.style.display = 'block';
@@ -1929,13 +1929,13 @@ function setupEventHandlers() {
                 }
             });
         }
-        
-        // Форма регистрации
+    
+    // Форма регистрации
         const registerForm = document.getElementById('register-form');
         if (registerForm) {
             registerForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
+        e.preventDefault();
+        
                 const username = document.getElementById('register-username')?.value || '';
                 const email = document.getElementById('register-email')?.value || '';
                 const password = document.getElementById('register-password')?.value || '';
@@ -1971,19 +1971,19 @@ function setupEventHandlers() {
                         registerButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Регистрация...';
                     }
                     
-                    await api.register(username, email, password, invite_code);
+            await api.register(username, email, password, invite_code);
                     
                     // Показываем уведомление об успешной регистрации
                     notifications.show(i18n.get('register_success'), 'success');
-                    
-                    // Автоматический вход после регистрации
-                    const loginResult = await api.login(username, password);
-                    token = loginResult.token;
-                    localStorage.setItem('token', token);
-                    
-                    await auth.checkAuth();
-                    navigation.navigateTo('keys');
-                } catch (error) {
+            
+            // Автоматический вход после регистрации
+            const loginResult = await api.login(username, password);
+            token = loginResult.token;
+            localStorage.setItem('token', token);
+            
+            await auth.checkAuth();
+            navigation.navigateTo('keys');
+        } catch (error) {
                     if (registerError) {
                         registerError.textContent = error.message;
                         registerError.style.display = 'block';
@@ -2005,30 +2005,30 @@ function setupEventHandlers() {
                 secureAuth.showPasswordStrength(this.value, 'password-strength');
             });
         }
-        
-        // Форма активации ключа
+    
+    // Форма активации ключа
         const redeemKeyForm = document.getElementById('redeem-key-form');
         if (redeemKeyForm) {
             redeemKeyForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
+        e.preventDefault();
+        
                 const key = document.getElementById('redeem-key')?.value || '';
                 const redeemError = document.getElementById('redeem-error');
                 const redeemSuccess = document.getElementById('redeem-success');
-                
+        
                 if (redeemError) redeemError.style.display = 'none';
                 if (redeemSuccess) redeemSuccess.style.display = 'none';
-                
-                try {
-                    await api.redeemKey(key);
-                    
+        
+        try {
+            await api.redeemKey(key);
+            
                     if (redeemSuccess) redeemSuccess.style.display = 'block';
                     const keyField = document.getElementById('redeem-key');
                     if (keyField) keyField.value = '';
-                    
-                    // Обновление списка ключей
-                    loadKeys();
-                } catch (error) {
+            
+            // Обновление списка ключей
+            loadKeys();
+        } catch (error) {
                     if (redeemError) {
                         redeemError.textContent = error.message;
                         redeemError.style.display = 'block';
@@ -2036,38 +2036,38 @@ function setupEventHandlers() {
                 }
             });
         }
-        
-        // Кнопка создания приглашения
+    
+    // Кнопка создания приглашения
         const generateInviteButton = document.getElementById('generate-invite-button');
         if (generateInviteButton) {
             generateInviteButton.addEventListener('click', async () => {
-                const button = document.getElementById('generate-invite-button');
+        const button = document.getElementById('generate-invite-button');
                 if (button) {
-                    button.disabled = true;
-                    button.textContent = 'Создание...';
+        button.disabled = true;
+        button.textContent = 'Создание...';
                 }
-                
-                try {
-                    await api.generateInvite();
-                    loadInvites();
-                } catch (error) {
-                    alert(`Ошибка создания приглашения: ${error.message}`);
-                } finally {
+        
+        try {
+            await api.generateInvite();
+            loadInvites();
+        } catch (error) {
+            alert(`Ошибка создания приглашения: ${error.message}`);
+        } finally {
                     const button = document.getElementById('generate-invite-button');
                     if (button) {
-                        button.disabled = false;
-                        button.textContent = 'Создать приглашение';
+            button.disabled = false;
+            button.textContent = 'Создать приглашение';
                     }
-                }
-            });
         }
-        
-        // Форма установки лимитов приглашений
+    });
+        }
+    
+    // Форма установки лимитов приглашений
         const setInviteLimitsForm = document.getElementById('set-invite-limits-form');
         if (setInviteLimitsForm) {
             setInviteLimitsForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
+        e.preventDefault();
+        
                 const adminLimit = parseInt(document.getElementById('admin-limit-value')?.value || '0');
                 const supportLimit = parseInt(document.getElementById('support-limit-value')?.value || '0');
                 const userLimit = parseInt(document.getElementById('user-limit-value')?.value || '0');
@@ -2077,16 +2077,16 @@ function setupEventHandlers() {
                 
                 if (setLimitsError) setLimitsError.style.display = 'none';
                 if (setLimitsSuccess) setLimitsSuccess.style.display = 'none';
-                
-                try {
-                    await api.setInviteLimits(adminLimit, supportLimit, userLimit);
+        
+        try {
+            await api.setInviteLimits(adminLimit, supportLimit, userLimit);
                     if (setLimitsSuccess) setLimitsSuccess.style.display = 'block';
-                    
-                    // Перезагрузка данных
-                    setTimeout(() => {
-                        loadInvites();
-                    }, 2000);
-                } catch (error) {
+            
+            // Перезагрузка данных
+            setTimeout(() => {
+                loadInvites();
+            }, 2000);
+        } catch (error) {
                     if (setLimitsError) {
                         setLimitsError.textContent = error.message;
                         setLimitsError.style.display = 'block';
@@ -2094,34 +2094,34 @@ function setupEventHandlers() {
                 }
             });
         }
-        
-        // Кнопка генерации кода Discord
+    
+    // Кнопка генерации кода Discord
         const generateDiscordCodeButton = document.getElementById('generate-discord-code-button');
         if (generateDiscordCodeButton) {
             generateDiscordCodeButton.addEventListener('click', async () => {
-                try {
-                    const result = await api.generateDiscordCode();
-                    
+        try {
+            const result = await api.generateDiscordCode();
+            
                     const discordCode = document.getElementById('discord-code');
                     const discordCodeCard = document.getElementById('discord-code-card');
                     
                     if (discordCode) discordCode.textContent = result.code;
                     if (discordCodeCard) discordCodeCard.style.display = 'block';
-                } catch (error) {
-                    alert(`Ошибка генерации кода: ${error.message}`);
-                }
-            });
+        } catch (error) {
+            alert(`Ошибка генерации кода: ${error.message}`);
         }
-        
-        // Форма генерации ключа (админ)
+    });
+        }
+    
+    // Форма генерации ключа (админ)
         const generateKeyForm = document.getElementById('generate-key-form');
         if (generateKeyForm) {
             generateKeyForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
+        e.preventDefault();
+        
                 const duration = parseInt(document.getElementById('key-duration')?.value || '24');
                 const userIdValue = document.getElementById('key-user')?.value || '';
-                const userId = userIdValue ? parseInt(userIdValue) : null;
+        const userId = userIdValue ? parseInt(userIdValue) : null;
                 const customKey = (document.getElementById('key-custom')?.value || '').trim();
                 
                 const generateKeyError = document.getElementById('generate-key-error');
@@ -2129,14 +2129,14 @@ function setupEventHandlers() {
                 
                 if (generateKeyError) generateKeyError.style.display = 'none';
                 if (generateKeySuccess) generateKeySuccess.style.display = 'none';
-                
-                try {
-                    const result = await api.generateKey(duration, userId, customKey || null);
-                    
+        
+        try {
+            const result = await api.generateKey(duration, userId, customKey || null);
+            
                     const generatedKey = document.getElementById('generated-key');
                     if (generatedKey) generatedKey.textContent = result.key;
                     if (generateKeySuccess) generateKeySuccess.style.display = 'block';
-                } catch (error) {
+        } catch (error) {
                     if (generateKeyError) {
                         generateKeyError.textContent = error.message;
                         generateKeyError.style.display = 'block';
@@ -2150,7 +2150,7 @@ function setupEventHandlers() {
 }
 
 // Запуск приложения при загрузке страницы
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', initApp); 
 
 // Утилиты для экспорта данных
 const exportUtils = {
