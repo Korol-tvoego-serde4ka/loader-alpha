@@ -264,12 +264,12 @@ const api = {
         return api.request('/users/discord-code', 'POST');
     },
     
-    // Получение списка пользователей (для админов)
+    // Получение списка пользователей (для админов и саппортов)
     getUsers: () => {
         return api.request('/admin/users');
     },
     
-    // Получение данных активности пользователей (для админов)
+    // Получение данных активности пользователей (для админов и саппортов)
     getUsersActivity: () => {
         return api.request('/admin/users/activity');
     },
@@ -918,7 +918,7 @@ async function loadAdminData() {
         if (dataCache.isCacheValid('users')) {
             usersData = { users: dataCache.users };
         } else {
-        // Получаем данные активности пользователей
+            // Получаем данные активности пользователей
             usersData = await api.getUsersActivity();
             dataCache.updateCache('users', usersData.users);
         }
