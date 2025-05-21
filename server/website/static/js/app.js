@@ -30,6 +30,14 @@ const api = {
         
         try {
             const response = await fetch(`${API_URL}${endpoint}`, options);
+            
+            // Проверяем, что ответ - это JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Сервер вернул неверный формат данных: ${text.substring(0, 100)}...`);
+            }
+            
             const result = await response.json();
             
             if (!response.ok) {
@@ -711,11 +719,18 @@ async function initApp() {
     
     // Кнопка создания приглашения
     document.getElementById('generate-invite-button').addEventListener('click', async () => {
+        const button = document.getElementById('generate-invite-button');
+        button.disabled = true;
+        button.textContent = 'Создание...';
+        
         try {
             await api.generateInvite();
             loadInvites();
         } catch (error) {
             alert(`Ошибка создания приглашения: ${error.message}`);
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Создать приглашение';
         }
     });
     

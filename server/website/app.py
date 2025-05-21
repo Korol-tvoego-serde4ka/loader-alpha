@@ -362,100 +362,112 @@ class UserInfo(Resource):
 class GenerateInvite(Resource):
     @jwt_required()
     def post(self):
-        user_id = get_jwt_identity()
-        db = get_db()
-        
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            return {"message": "Пользователь не найден"}, 404
-        
-        if user.is_banned:
-            return {"message": "Ваш аккаунт заблокирован"}, 403
-        
-        # Проверка прав на создание инвайтов
-        if not user.can_create_invite():
-            return {"message": "Недостаточно прав для создания инвайтов"}, 403
-        
-        # Проверка месячного лимита инвайтов
-        limits = db.query(RoleLimits).first()
-        if not limits:
-            # Значения по умолчанию, если настройки еще не были созданы
-            limits = RoleLimits(
-                admin_monthly_invites=999,
-                support_monthly_invites=10,
-                user_monthly_invites=0
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                return {"message": "Пользователь не найден"}, 404
+            
+            if user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Проверка прав на создание инвайтов
+            if not user.can_create_invite():
+                return {"message": "Недостаточно прав для создания инвайтов"}, 403
+            
+            # Проверка месячного лимита инвайтов
+            limits = db.query(RoleLimits).first()
+            if not limits:
+                # Значения по умолчанию, если настройки еще не были созданы
+                limits = RoleLimits(
+                    admin_monthly_invites=999,
+                    support_monthly_invites=10,
+                    user_monthly_invites=0
+                )
+                db.add(limits)
+                db.commit()
+            
+            # Определение лимита для пользователя в зависимости от его роли
+            if user.is_admin:
+                monthly_limit = limits.admin_monthly_invites
+            elif user.is_support:
+                monthly_limit = limits.support_monthly_invites
+            else:
+                monthly_limit = limits.user_monthly_invites
+            
+            # Проверка количества созданных инвайтов за текущий месяц
+            current_month_start = datetime.datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            used_invites = db.query(Invite).filter(
+                Invite.created_by_id == user_id,
+                Invite.created_at >= current_month_start
+            ).count()
+            
+            if used_invites >= monthly_limit:
+                return {"message": f"Достигнут месячный лимит инвайтов ({monthly_limit})"}, 403
+            
+            # Создание инвайт-кода со сроком действия 30 дней
+            invite_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+            
+            invite = Invite(
+                created_by_id=user_id,
+                expires_at=invite_expiry
             )
-            db.add(limits)
+            
+            db.add(invite)
             db.commit()
-        
-        # Определение лимита для пользователя в зависимости от его роли
-        if user.is_admin:
-            monthly_limit = limits.admin_monthly_invites
-        elif user.is_support:
-            monthly_limit = limits.support_monthly_invites
-        else:
-            monthly_limit = limits.user_monthly_invites
-        
-        # Проверка количества созданных инвайтов за текущий месяц
-        current_month_start = datetime.datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        used_invites = db.query(Invite).filter(
-            Invite.created_by_id == user_id,
-            Invite.created_at >= current_month_start
-        ).count()
-        
-        if used_invites >= monthly_limit:
-            return {"message": f"Достигнут месячный лимит инвайтов ({monthly_limit})"}, 403
-        
-        # Создание инвайт-кода со сроком действия 30 дней
-        invite_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=30)
-        
-        invite = Invite(
-            created_by_id=user_id,
-            expires_at=invite_expiry
-        )
-        
-        db.add(invite)
-        db.commit()
-        db.refresh(invite)
-        
-        return {
-            "code": invite.code,
-            "created_at": invite.created_at.isoformat(),
-            "expires_at": invite.expires_at.isoformat()
-        }
+            db.refresh(invite)
+            
+            return {
+                "code": invite.code,
+                "created_at": invite.created_at.isoformat(),
+                "expires_at": invite.expires_at.isoformat()
+            }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при создании приглашения: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при создании приглашения: {str(e)}"}, 500
 
 class InviteList(Resource):
     @jwt_required()
     def get(self):
-        user_id = get_jwt_identity()
-        db = get_db()
-        
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            return {"message": "Пользователь не найден"}, 404
-        
-        if user.is_banned:
-            return {"message": "Ваш аккаунт заблокирован"}, 403
-        
-        # Для администраторов показываем все инвайты, для остальных - только свои
-        if user.is_admin:
-            invites = db.query(Invite).all()
-        else:
-            invites = db.query(Invite).filter(Invite.created_by_id == user_id).all()
-        
-        return {
-            "invites": [
-                {
-                    "id": invite.id,
-                    "code": invite.code,
-                    "created_at": invite.created_at.isoformat(),
-                    "expires_at": invite.expires_at.isoformat(),
-                    "used": invite.used,
-                    "used_by": invite.used_by.username if invite.used_by else None,
-                    "created_by": invite.created_by.username
-                } for invite in invites
-            ]
-        }
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
+            
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                return {"message": "Пользователь не найден"}, 404
+            
+            if user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Для администраторов показываем все инвайты, для остальных - только свои
+            if user.is_admin:
+                invites = db.query(Invite).all()
+            else:
+                invites = db.query(Invite).filter(Invite.created_by_id == user_id).all()
+            
+            return {
+                "invites": [
+                    {
+                        "id": invite.id,
+                        "code": invite.code,
+                        "created_at": invite.created_at.isoformat(),
+                        "expires_at": invite.expires_at.isoformat(),
+                        "used": invite.used,
+                        "used_by": invite.used_by.username if invite.used_by else None,
+                        "created_by": invite.created_by.username
+                    } for invite in invites
+                ]
+            }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при получении списка приглашений: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при получении списка приглашений: {str(e)}"}, 500
 
 class GenerateDiscordCode(Resource):
     @jwt_required()
@@ -851,122 +863,140 @@ class AdminUserActivity(Resource):
 class AdminDeleteInvite(Resource):
     @jwt_required()
     def post(self, invite_id):
-        user_id = get_jwt_identity()
-        db = get_db()
-        
-        # Проверка, что текущий пользователь является администратором
-        current_user = db.query(User).filter(User.id == user_id).first()
-        if not current_user or not current_user.is_admin:
-            return {"message": "Недостаточно прав для удаления инвайта"}, 403
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
             
-        if current_user.is_banned:
-            return {"message": "Ваш аккаунт заблокирован"}, 403
-        
-        # Поиск инвайта
-        invite = db.query(Invite).filter(Invite.id == invite_id).first()
-        if not invite:
-            return {"message": "Инвайт не найден"}, 404
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для удаления инвайта"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
             
-        # Удаление инвайта
-        db.delete(invite)
-        db.commit()
-        
-        return {"message": "Инвайт успешно удален"}
+            # Поиск инвайта
+            invite = db.query(Invite).filter(Invite.id == invite_id).first()
+            if not invite:
+                return {"message": "Инвайт не найден"}, 404
+                
+            # Удаление инвайта
+            db.delete(invite)
+            db.commit()
+            
+            return {"message": "Инвайт успешно удален"}
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при удалении инвайта: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при удалении инвайта: {str(e)}"}, 500
 
 class AdminSetInviteLimits(Resource):
     @jwt_required()
     def post(self):
-        user_id = get_jwt_identity()
-        db = get_db()
-        
-        # Проверка, что текущий пользователь является администратором
-        current_user = db.query(User).filter(User.id == user_id).first()
-        if not current_user or not current_user.is_admin:
-            return {"message": "Недостаточно прав для изменения лимитов"}, 403
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
             
-        if current_user.is_banned:
-            return {"message": "Ваш аккаунт заблокирован"}, 403
-        
-        # Получение данных из запроса
-        data = request.get_json()
-        admin_limit = data.get("admin_limit", 999)  # Практически неограниченно для админов
-        support_limit = data.get("support_limit", 10)
-        user_limit = data.get("user_limit", 0)
-        
-        # Обновление или создание настроек лимитов
-        limits = db.query(RoleLimits).first()
-        if not limits:
-            limits = RoleLimits(
-                admin_monthly_invites=admin_limit,
-                support_monthly_invites=support_limit,
-                user_monthly_invites=user_limit
-            )
-            db.add(limits)
-        else:
-            limits.admin_monthly_invites = admin_limit
-            limits.support_monthly_invites = support_limit
-            limits.user_monthly_invites = user_limit
-        
-        db.commit()
-        
-        return {
-            "admin_limit": admin_limit,
-            "support_limit": support_limit,
-            "user_limit": user_limit,
-            "message": "Лимиты успешно обновлены"
-        }
+            # Проверка, что текущий пользователь является администратором
+            current_user = db.query(User).filter(User.id == user_id).first()
+            if not current_user or not current_user.is_admin:
+                return {"message": "Недостаточно прав для изменения лимитов"}, 403
+                
+            if current_user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Получение данных из запроса
+            data = request.get_json()
+            admin_limit = data.get("admin_limit", 999)  # Практически неограниченно для админов
+            support_limit = data.get("support_limit", 10)
+            user_limit = data.get("user_limit", 0)
+            
+            # Обновление или создание настроек лимитов
+            limits = db.query(RoleLimits).first()
+            if not limits:
+                limits = RoleLimits(
+                    admin_monthly_invites=admin_limit,
+                    support_monthly_invites=support_limit,
+                    user_monthly_invites=user_limit
+                )
+                db.add(limits)
+            else:
+                limits.admin_monthly_invites = admin_limit
+                limits.support_monthly_invites = support_limit
+                limits.user_monthly_invites = user_limit
+            
+            db.commit()
+            
+            return {
+                "admin_limit": admin_limit,
+                "support_limit": support_limit,
+                "user_limit": user_limit,
+                "message": "Лимиты успешно обновлены"
+            }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при установке лимитов приглашений: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при установке лимитов приглашений: {str(e)}"}, 500
 
 class GetInviteLimits(Resource):
     @jwt_required()
     def get(self):
-        user_id = get_jwt_identity()
-        db = get_db()
-        
-        # Проверка пользователя
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            return {"message": "Пользователь не найден"}, 404
+        try:
+            user_id = get_jwt_identity()
+            db = get_db()
             
-        if user.is_banned:
-            return {"message": "Ваш аккаунт заблокирован"}, 403
-        
-        # Получение настроек лимитов
-        limits = db.query(RoleLimits).first()
-        if not limits:
-            # Значения по умолчанию, если настройки еще не были созданы
-            limits = RoleLimits(
-                admin_monthly_invites=999,
-                support_monthly_invites=10,
-                user_monthly_invites=0
-            )
-            db.add(limits)
-            db.commit()
+            # Проверка пользователя
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                return {"message": "Пользователь не найден"}, 404
+                
+            if user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
             
-        # Подсчет количества использованных инвайтов за текущий месяц
-        current_month_start = datetime.datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        used_invites = db.query(Invite).filter(
-            Invite.created_by_id == user_id,
-            Invite.created_at >= current_month_start
-        ).count()
-        
-        # Определение лимита для текущего пользователя
-        if user.is_admin:
-            user_limit = limits.admin_monthly_invites
-        elif user.is_support:
-            user_limit = limits.support_monthly_invites
-        else:
-            user_limit = limits.user_monthly_invites
+            # Получение настроек лимитов
+            limits = db.query(RoleLimits).first()
+            if not limits:
+                # Значения по умолчанию, если настройки еще не были созданы
+                limits = RoleLimits(
+                    admin_monthly_invites=999,
+                    support_monthly_invites=10,
+                    user_monthly_invites=0
+                )
+                db.add(limits)
+                db.commit()
+                
+            # Подсчет количества использованных инвайтов за текущий месяц
+            current_month_start = datetime.datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            used_invites = db.query(Invite).filter(
+                Invite.created_by_id == user_id,
+                Invite.created_at >= current_month_start
+            ).count()
             
-        return {
-            "monthly_limit": user_limit,
-            "used_invites": used_invites,
-            "remaining_invites": max(0, user_limit - used_invites),
-            "global_limits": {
-                "admin": limits.admin_monthly_invites,
-                "support": limits.support_monthly_invites,
-                "user": limits.user_monthly_invites
+            # Определение лимита для текущего пользователя
+            if user.is_admin:
+                user_limit = limits.admin_monthly_invites
+            elif user.is_support:
+                user_limit = limits.support_monthly_invites
+            else:
+                user_limit = limits.user_monthly_invites
+                
+            return {
+                "monthly_limit": user_limit,
+                "used_invites": used_invites,
+                "remaining_invites": max(0, user_limit - used_invites),
+                "global_limits": {
+                    "admin": limits.admin_monthly_invites,
+                    "support": limits.support_monthly_invites,
+                    "user": limits.user_monthly_invites
+                }
             }
-        }
+        except Exception as e:
+            # Логирование ошибки
+            print(f"Ошибка при получении лимитов приглашений: {str(e)}")
+            # Возвращаем ошибку в формате JSON
+            return {"message": f"Ошибка при получении лимитов приглашений: {str(e)}"}, 500
 
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
