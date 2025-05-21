@@ -859,9 +859,9 @@ class AdminUserActivity(Resource):
         user_id = get_jwt_identity()
         db = get_db()
         
-        # Проверка, что пользователь является администратором
+        # Проверка, что пользователь является администратором или саппортом
         user = db.query(User).filter(User.id == user_id).first()
-        if not user or not user.is_admin:
+        if not user or (not user.is_admin and not user.is_support):
             return {"message": "Недостаточно прав для просмотра активности пользователей"}, 403
             
         if user.is_banned:
