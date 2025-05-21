@@ -7,6 +7,7 @@ import asyncio
 import datetime
 import requests
 import json
+import aiohttp
 from dotenv import load_dotenv
 
 # Добавление пути к корню проекта
@@ -141,6 +142,9 @@ async def on_ready():
     """Вызывается при успешном подключении бота"""
     print(f'Бот успешно подключен как {bot.user.name}')
     
+    # Отключение автоматического получения списка участников - это исправит ошибку
+    bot.member_cache_flags.joined = True
+    
     # Синхронизация команд с Discord
     try:
         synced = await bot.tree.sync()
@@ -195,6 +199,12 @@ async def check_expired_keys():
         print(f"Ошибка при проверке истекших ключей: {e}")
     finally:
         db.close()
+
+# Обработчик ошибок
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """Обработчик ошибок бота"""
+    print(f"Произошла ошибка в событии {event}: {sys.exc_info()}")
 
 # Команды бота
 @bot.tree.command(name="code", description="Привязка аккаунта сайта к Discord")
@@ -616,7 +626,15 @@ def main():
         return
     
     try:
-        bot.run(DISCORD_TOKEN)
+        bot.run(DISCORD_TOKEN, reconnect=True)
+    except discord.errors.HTTPException as e:
+        print(f"Ошибка HTTP при запуске бота: {e}")
+        if str(e).startswith("429"):
+            print("Слишком много запросов (rate limit). Подождите некоторое время.")
+    except discord.errors.LoginFailure:
+        print("Неверный токен бота. Проверьте DISCORD_TOKEN в .env файле.")
+    except aiohttp.client_exceptions.ClientConnectionError:
+        print("Ошибка подключения к Discord. Проверьте интернет-соединение.")
     except Exception as e:
         print(f"Ошибка при запуске бота: {e}")
 
