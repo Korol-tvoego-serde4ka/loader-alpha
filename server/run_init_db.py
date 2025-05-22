@@ -11,9 +11,9 @@ from database.init_db import create_admin_user, create_initial_invite, create_in
 if __name__ == "__main__":
     try:
         # Инициализация базы данных
-        print("Подключение к PostgreSQL...")
+        print("Инициализация базы данных...")
         init_db()
-        print("Подключение к PostgreSQL успешно установлено")
+        print("База данных успешно инициализирована")
         
         # Создание сессии для работы с базой данных
         from database.models import SessionLocal
@@ -21,12 +21,15 @@ if __name__ == "__main__":
         
         # Создание администратора
         admin = create_admin_user(db)
+        print(f"Создан аккаунт администратора: {admin.username}")
         
         # Создание начального инвайта
         invite = create_initial_invite(db, admin)
+        print(f"Создан начальный инвайт-код: {invite.code}")
         
         # Создание начальных лимитов для ролей
         role_limits = create_initial_role_limits(db)
+        print("Созданы начальные лимиты для ролей")
         
         # Закрытие сессии
         db.close()

@@ -130,9 +130,6 @@ const pagination = {
     }
 };
 
-// Константы API
-const API_URL = '/api';
-
 // Утилиты для работы с API
 const api = {
     // Отправка запроса

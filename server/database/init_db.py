@@ -9,6 +9,7 @@ import sys
 import logging
 
 from database.models import init_db, SessionLocal, User, Invite, RoleLimits
+from passlib.context import CryptContext
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -16,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 # Загрузка переменных окружения
 load_dotenv()
+
+# Настройка шифрования паролей
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_admin_user(db_session):
     """Создание пользователя-администратора"""
@@ -27,14 +31,14 @@ def create_admin_user(db_session):
     
     # Получение данных для создания администратора из переменных окружения
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD")
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin")
     admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
     
-    if not admin_password:
-        admin_password = input("Введите пароль для администратора: ")
+    if not admin_password or admin_password == "":
+        admin_password = "admin"  # Дефолтный пароль
     
     # Создание хеша пароля
-    password_hash = generate_password_hash(admin_password)
+    password_hash = pwd_context.hash(admin_password)
     
     # Создание пользователя
     admin = User(
@@ -48,7 +52,7 @@ def create_admin_user(db_session):
     db_session.commit()
     db_session.refresh(admin)
     
-    print(f"Создан аккаунт администратора: {admin_username}")
+    print(f"Создан аккаунт администратора: {admin_username} с паролем {admin_password}")
     return admin
 
 def create_initial_invite(db_session, admin):
@@ -88,18 +92,12 @@ def create_initial_role_limits(db_session):
     print("Созданы начальные лимиты для ролей")
     return role_limits
 
-def generate_password_hash(password):
-    """Генерация хеша пароля"""
-    import hashlib
-    # Простая реализация на основе SHA-256
-    return hashlib.sha256(password.encode()).hexdigest()
-
 if __name__ == "__main__":
     try:
         # Инициализация базы данных
-        print("Подключение к PostgreSQL...")
+        print("Инициализация базы данных...")
         init_db()
-        print("Подключение к PostgreSQL успешно установлено")
+        print("База данных успешно инициализирована")
         
         # Создание сессии для работы с базой данных
         db = SessionLocal()
