@@ -11,6 +11,137 @@ if (typeof API_URL === 'undefined') {
 let token = localStorage.getItem('token');
 let userData = null;
 
+// Глобальная система логирования для отладки
+window.appLogger = {
+    // Максимальное количество логов для хранения
+    maxLogs: 100,
+    
+    // Массив сохраненных логов
+    logs: [],
+    
+    // Типы логов
+    types: {
+        INFO: 'info',
+        ERROR: 'danger',
+        WARNING: 'warning',
+        DEBUG: 'secondary'
+    },
+    
+    // Добавление лога
+    log: function(message, data = null, type = 'INFO') {
+        const logEntry = {
+            timestamp: new Date(),
+            message: message,
+            data: data,
+            type: this.types[type] || this.types.INFO
+        };
+        
+        // Добавляем в начало массива
+        this.logs.unshift(logEntry);
+        
+        // Ограничиваем размер массива
+        if (this.logs.length > this.maxLogs) {
+            this.logs.pop();
+        }
+        
+        // Логируем в консоль браузера
+        if (type === 'ERROR') {
+            console.error(`[${logEntry.timestamp.toLocaleTimeString()}] ${message}`, data);
+        } else if (type === 'WARNING') {
+            console.warn(`[${logEntry.timestamp.toLocaleTimeString()}] ${message}`, data);
+        } else {
+            console.log(`[${logEntry.timestamp.toLocaleTimeString()}] ${message}`, data);
+        }
+        
+        // Обновляем отображение логов если панель открыта
+        this.updateLogDisplay();
+        
+        return logEntry;
+    },
+    
+    // Удобные методы для разных типов логов
+    logInfo: function(message, data = null) {
+        return this.log(message, data, 'INFO');
+    },
+    
+    logError: function(message, data = null) {
+        return this.log(message, data, 'ERROR');
+    },
+    
+    logWarning: function(message, data = null) {
+        return this.log(message, data, 'WARNING');
+    },
+    
+    logDebug: function(message, data = null) {
+        return this.log(message, data, 'DEBUG');
+    },
+    
+    // Очистка всех логов
+    clearLogs: function() {
+        this.logs = [];
+        this.updateLogDisplay();
+    },
+    
+    // Обновление отображения логов
+    updateLogDisplay: function() {
+        const logContainer = document.getElementById('admin-log-container');
+        if (!logContainer) return;
+        
+        logContainer.innerHTML = '';
+        
+        // Создаем элементы для каждого лога
+        this.logs.forEach(log => {
+            const logElement = document.createElement('div');
+            logElement.className = `log-entry alert alert-${log.type} mb-2`;
+            
+            const timestamp = document.createElement('small');
+            timestamp.className = 'text-muted';
+            timestamp.textContent = `[${log.timestamp.toLocaleTimeString()}] `;
+            
+            const message = document.createElement('span');
+            message.textContent = log.message;
+            
+            logElement.appendChild(timestamp);
+            logElement.appendChild(message);
+            
+            // Если есть данные, добавляем их в свернутом виде
+            if (log.data) {
+                const detailsBtn = document.createElement('button');
+                detailsBtn.className = 'btn btn-sm btn-link ml-2';
+                detailsBtn.textContent = 'Детали';
+                
+                const detailsContainer = document.createElement('pre');
+                detailsContainer.className = 'log-details mt-2 p-2 bg-dark text-light rounded';
+                detailsContainer.style.display = 'none';
+                let detailsText = '';
+                
+                try {
+                    if (typeof log.data === 'string') {
+                        detailsText = log.data;
+                    } else if (log.data instanceof Error) {
+                        detailsText = `${log.data.name}: ${log.data.message}\n${log.data.stack || ''}`;
+                    } else {
+                        detailsText = JSON.stringify(log.data, null, 2);
+                    }
+                } catch (e) {
+                    detailsText = 'Не удалось преобразовать данные';
+                }
+                
+                detailsContainer.textContent = detailsText;
+                
+                detailsBtn.addEventListener('click', function() {
+                    detailsContainer.style.display = detailsContainer.style.display === 'none' ? 'block' : 'none';
+                });
+                
+                logElement.appendChild(detailsBtn);
+                logElement.appendChild(detailsContainer);
+            }
+            
+            logContainer.appendChild(logElement);
+        });
+    }
+};
+
 // Кэш для хранения данных
 const dataCache = {
     users: null,
@@ -180,6 +311,10 @@ const api = {
             }
         } catch (error) {
             console.error(`API ошибка: ${endpoint}`, error);
+            // Логируем ошибку в глобальный журнал
+            if (window.appLogger) {
+                window.appLogger.logError(`API ошибка: ${endpoint}`, error);
+            }
             throw error;
         }
     },
@@ -215,7 +350,7 @@ const api = {
     },
     
     // Создание инвайта
-    generateInvite: () => {
+    createInvite: () => {
         console.log('Отправка запроса на создание инвайта');
         return api.request('/invites/generate', 'POST', {});
     },
@@ -313,7 +448,7 @@ const api = {
     // Изменение пароля
     changePassword: async (currentPassword, newPassword) => {
         try {
-            const response = await fetch('/api/change-password', {
+            const response = await fetch(`${API_URL}/change-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -325,14 +460,24 @@ const api = {
                 })
             });
             
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.message || 'Ошибка при изменении пароля');
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Ошибка при изменении пароля');
+                }
+                
+                return data;
+            } else {
+                throw new Error('Ответ сервера не в формате JSON');
             }
-            
-            return data;
         } catch (error) {
+            console.error('Ошибка при изменении пароля:', error);
+            // Логируем ошибку в глобальный журнал
+            if (window.appLogger) {
+                window.appLogger.logError('Ошибка при изменении пароля', error);
+            }
             throw error;
         }
     },
@@ -344,20 +489,30 @@ const api = {
     
     // Получение Discord-инвайт ссылки
     getDiscordInviteLink: async () => {
-        const response = await fetch('/api/discord/invite-link');
-        const data = await response.json();
-        return data.invite_link;
+        try {
+            const response = await fetch(`${API_URL}/discord/invite-link`);
+            
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                return data.invite_link;
+            } else {
+                throw new Error('Ответ сервера не в формате JSON');
+            }
+        } catch (error) {
+            console.error('Ошибка при получении ссылки Discord:', error);
+            // Логируем ошибку в глобальный журнал
+            if (window.appLogger) {
+                window.appLogger.logError('Ошибка при получении ссылки Discord', error);
+            }
+            throw error;
+        }
     },
     
     // Смена пароля пользователя (для админов)
     adminChangeUserPassword: (userId, newPassword) => {
         return api.request(`/admin/users/${userId}/change-password`, 'POST', { new_password: newPassword });
-    },
-    
-    // Создание нового приглашения
-    generateInvite: () => {
-        return api.request('/invites/generate', 'POST');
-    },
+    }
 };
 
 // Утилиты для форматирования
@@ -1015,13 +1170,13 @@ async function generateInvite() {
         const invitesLoading = document.getElementById('invites-loading');
         if (invitesLoading) invitesLoading.style.display = 'block';
         
-        console.log("Отправляем запрос на генерацию приглашения");
-        const response = await api.generateInvite();
-        console.log("Ответ сервера при генерации приглашения:", response);
+        window.appLogger.logInfo("Отправляем запрос на генерацию приглашения");
+        const response = await api.createInvite();
+        window.appLogger.logInfo("Ответ сервера при генерации приглашения", response);
         
         if (response && response.code) {
             // Очищаем кэш и перезагружаем список приглашений
-            console.log("Приглашение успешно создано:", response.code);
+            window.appLogger.logInfo("Приглашение успешно создано:", response.code);
             dataCache.clearCache('invites');
             
             // Перезагружаем списки приглашений
@@ -1037,7 +1192,7 @@ async function generateInvite() {
             // Показываем уведомление
             utils.showNotification('success', `Новое приглашение создано: ${response.code}`);
         } else {
-            console.error("Ошибка при создании приглашения: неверный формат ответа", response);
+            window.appLogger.logError("Ошибка при создании приглашения: неверный формат ответа", response);
             utils.showNotification('danger', 'Ошибка при создании приглашения');
         }
     } catch (error) {
@@ -1462,7 +1617,7 @@ async function loadAdminInvites() {
                                     await api.deleteInvite(invite.id);
                                     dataCache.clearCache('invites');
                                     loadAdminInvites();
-                                } catch (error) {
+                } catch (error) {
                                     alert(`Ошибка при удалении приглашения: ${error.message}`);
                                 }
                             }
@@ -1506,16 +1661,16 @@ function setupAdminEventHandlers() {
     // Добавляем обработчик для формы управления лимитами приглашений в админке
     const setInviteLimitsFormAdmin = document.getElementById('set-invite-limits-form-admin');
     if (setInviteLimitsFormAdmin) {
-        console.log('Найдена форма лимитов админа:', setInviteLimitsFormAdmin);
+        window.appLogger.logInfo('Найдена форма лимитов админа');
         setInviteLimitsFormAdmin.addEventListener('submit', async (e) => {
-            console.log('Форма лимитов отправлена');
+            window.appLogger.logInfo('Отправлена форма лимитов приглашений в админ-панели');
             e.preventDefault();
             
             const adminLimit = document.getElementById('admin-limit-value-admin').value;
             const supportLimit = document.getElementById('support-limit-value-admin').value;
             const userLimit = document.getElementById('user-limit-value-admin').value;
             
-            console.log('Значения лимитов:', {adminLimit, supportLimit, userLimit});
+            window.appLogger.logInfo('Значения лимитов', {adminLimit, supportLimit, userLimit});
             
             const errorElement = document.getElementById('set-limits-error-admin');
             const successElement = document.getElementById('set-limits-success-admin');
@@ -1530,12 +1685,15 @@ function setupAdminEventHandlers() {
             }
                 
             try {
+                window.appLogger.logInfo('Вызов API для установки лимитов приглашений');
                 const result = await api.setInviteLimits(adminLimit, supportLimit, userLimit);
-                console.log('Результат установки лимитов:', result);
+                window.appLogger.logInfo('Результат установки лимитов', result);
                 
                 dataCache.clearCache('inviteLimits');
                 
                 if (successElement) successElement.style.display = 'block';
+                utils.showNotification('success', 'Лимиты приглашений успешно обновлены');
+                
                 // Обновляем также данные в обычной вкладке приглашений
                 const mainAdminLimit = document.getElementById('admin-limit-value');
                 const mainSupportLimit = document.getElementById('support-limit-value');
@@ -1544,12 +1702,16 @@ function setupAdminEventHandlers() {
                 if (mainAdminLimit) mainAdminLimit.value = adminLimit;
                 if (mainSupportLimit) mainSupportLimit.value = supportLimit;
                 if (mainUserLimit) mainUserLimit.value = userLimit;
+                
+                // Перезагружаем данные инвайтов
+                await loadAdminInvites();
             } catch (error) {
-                console.error('Ошибка при установке лимитов:', error);
+                window.appLogger.logError('Ошибка при установке лимитов приглашений', error);
                 if (errorElement) {
                     errorElement.textContent = `Ошибка: ${error.message}`;
                     errorElement.style.display = 'block';
                 }
+                utils.showNotification('danger', `Ошибка при установке лимитов: ${error.message}`);
             } finally {
                 if (saveButton) {
                     saveButton.disabled = false;
@@ -1558,28 +1720,28 @@ function setupAdminEventHandlers() {
             }
         });
     } else {
-        console.error('Не найдена форма с ID set-invite-limits-form-admin');
+        window.appLogger.logError('Не найдена форма с ID set-invite-limits-form-admin');
     }
     
     // Обработчик для кнопки создания приглашения в админке
     const adminGenerateInviteButton = document.getElementById('admin-generate-invite-button');
     if (adminGenerateInviteButton) {
         adminGenerateInviteButton.addEventListener('click', async () => {
-            const button = adminGenerateInviteButton;
-            if (button) {
-                button.disabled = true;
-                button.textContent = 'Создание...';
-            }
-                
-                try {
+            window.appLogger.logInfo('Нажата кнопка создания приглашения в админ-панели');
+            
+            adminGenerateInviteButton.disabled = true;
+            adminGenerateInviteButton.textContent = 'Создание...';
+            
+            try {
+                window.appLogger.logInfo('Вызов функции generateInvite()');
                 await generateInvite();
-                } catch (error) {
-                utils.showNotification('danger', `Ошибка создания приглашения: ${error.message}`);
+                window.appLogger.logInfo('Приглашение успешно создано');
+            } catch (error) {
+                window.appLogger.logError('Ошибка создания приглашения в админ-панели', error);
+                utils.showNotification('danger', `Ошибка создания приглашения: ${error.message || 'неизвестная ошибка'}`);
             } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.textContent = 'Создать приглашение';
-                }
+                adminGenerateInviteButton.disabled = false;
+                adminGenerateInviteButton.textContent = 'Создать приглашение';
             }
         });
     }
@@ -1608,11 +1770,21 @@ function setupAdminEventHandlers() {
             
             if (confirm(`Вы уверены, что хотите удалить ${selectedInviteIds.length} приглашений?`)) {
                 try {
+                    window.appLogger.logInfo(`Удаление выбранных приглашений (${selectedInviteIds.length})`);
+                    adminDeleteSelectedInvitesButton.disabled = true;
+                    adminDeleteSelectedInvitesButton.textContent = 'Удаление...';
+                    
                     await api.deleteMultipleInvites(selectedInviteIds);
+                    window.appLogger.logInfo(`Удалено ${selectedInviteIds.length} приглашений`);
+                    
                     dataCache.clearCache('invites');
                     loadAdminInvites();
-    } catch (error) {
+                } catch (error) {
+                    window.appLogger.logError(`Ошибка при удалении приглашений: ${error.message}`, error);
                     alert(`Ошибка при удалении приглашений: ${error.message}`);
+                } finally {
+                    adminDeleteSelectedInvitesButton.disabled = false;
+                    adminDeleteSelectedInvitesButton.textContent = 'Удалить выбранные';
                 }
             }
         });
@@ -2331,13 +2503,14 @@ const i18n = {
 // Функции для пользовательских настроек
 async function initApp() {
     try {
-        console.log("Initializing app...");
+        console.log("Инициализация приложения...");
         
-        // Инициализация темы
+        // Инициализируем системы
         themeUtils.init();
-        
-        // Инициализация локализации
         i18n.init();
+        
+        // Показываем первое сообщение через logger после его инициализации
+        window.appLogger.logInfo("Инициализация приложения...");
         
         // Настройка обработчика ошибок
         errorHandler.setupGlobalHandler();
@@ -2373,7 +2546,13 @@ async function initApp() {
         // Настройка обработчиков событий
         setupEventHandlers();
         
-        console.log("App initialization completed successfully");
+        // Настройка обработчиков для логов
+        setupLogHandlers();
+        
+        // Настройка обработчиков админ-панели
+        setupAdminEventHandlers();
+        
+        window.appLogger.logInfo("Инициализация приложения завершена успешно");
     } catch (error) {
         console.error("Error during app initialization:", error);
         // Отображение ошибки пользователю
@@ -2688,6 +2867,91 @@ function setupEventHandlers() {
     } catch (error) {
         console.error("Error setting up event handlers:", error);
     }
+}
+
+// Добавляем обработчики для системы логов
+function setupLogHandlers() {
+    // Очистка логов
+    document.getElementById('clear-logs-btn')?.addEventListener('click', () => {
+        if (confirm('Вы уверены, что хотите очистить все логи?')) {
+            window.appLogger.clearLogs();
+        }
+    });
+    
+    // Переключение автоскролла
+    const autoScrollBtn = document.getElementById('toggle-auto-scroll-logs');
+    let autoScroll = true;
+    
+    autoScrollBtn?.addEventListener('click', () => {
+        autoScroll = !autoScroll;
+        autoScrollBtn.innerHTML = autoScroll ? 
+            '<i class="fas fa-scroll"></i> Авто-прокрутка: ВКЛ' : 
+            '<i class="fas fa-scroll"></i> Авто-прокрутка: ВЫКЛ';
+        
+        if (autoScroll) {
+            const logContainer = document.getElementById('admin-log-container');
+            if (logContainer) {
+                logContainer.scrollTop = 0; // Скролл в начало, так как логи отображаются в обратном порядке
+            }
+        }
+    });
+    
+    // Фильтрация логов
+    document.getElementById('filter-all-logs')?.addEventListener('click', function() {
+        filterLogs('all');
+        setActiveFilterButton(this);
+    });
+    
+    document.getElementById('filter-info-logs')?.addEventListener('click', function() {
+        filterLogs('info');
+        setActiveFilterButton(this);
+    });
+    
+    document.getElementById('filter-warning-logs')?.addEventListener('click', function() {
+        filterLogs('warning');
+        setActiveFilterButton(this);
+    });
+    
+    document.getElementById('filter-error-logs')?.addEventListener('click', function() {
+        filterLogs('danger');
+        setActiveFilterButton(this);
+    });
+    
+    // Поиск в логах
+    document.getElementById('log-search')?.addEventListener('input', debounce(function() {
+        filterLogs(currentLogFilter, this.value);
+    }, 300));
+    
+    // Обработчик загрузки логов при открытии вкладки
+    document.getElementById('logs-tab')?.addEventListener('click', () => {
+        window.appLogger.updateLogDisplay();
+    });
+}
+
+// Глобальная переменная для текущего фильтра логов
+let currentLogFilter = 'all';
+
+// Функция для установки активной кнопки фильтра
+function setActiveFilterButton(buttonElement) {
+    document.querySelectorAll('.btn-group button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    buttonElement.classList.add('active');
+}
+
+// Функция для фильтрации логов
+function filterLogs(type = 'all', searchText = '') {
+    currentLogFilter = type;
+    
+    const logEntries = document.querySelectorAll('.log-entry');
+    const searchLower = searchText.toLowerCase();
+    
+    logEntries.forEach(entry => {
+        let showByType = type === 'all' || entry.classList.contains(`alert-${type}`);
+        let showBySearch = !searchText || entry.textContent.toLowerCase().includes(searchLower);
+        
+        entry.style.display = showByType && showBySearch ? 'block' : 'none';
+    });
 }
 
 // Запуск приложения при загрузке страницы
@@ -3068,12 +3332,14 @@ const errorHandler = {
     // Обработка сетевых ошибок
     handleNetworkError: function(error) {
         console.error('Network error:', error);
+        window.appLogger.logError('Сетевая ошибка', error);
         
         // Показываем уведомление
         notifications.show(i18n.get('error_server'), 'error');
         
         // Проверяем, не истекла ли сессия
         if (error.status === 401) {
+            window.appLogger.logWarning('Сессия истекла, выполняется выход');
             auth.logout();
             navigation.navigateTo('login');
             return;
@@ -3081,6 +3347,7 @@ const errorHandler = {
         
         // Проверяем, не отказано ли в доступе
         if (error.status === 403) {
+            window.appLogger.logWarning('Доступ запрещен (403)');
             notifications.show(i18n.get('error_access_denied'), 'error');
             return;
         }
@@ -3092,6 +3359,7 @@ const errorHandler = {
     // Обработка ошибок валидации
     handleValidationError: function(error) {
         console.error('Validation error:', error);
+        window.appLogger.logError('Ошибка валидации', error);
         
         if (Array.isArray(error.errors)) {
             // Показываем первую ошибку валидации
@@ -3106,6 +3374,14 @@ const errorHandler = {
         try {
             window.addEventListener('error', (event) => {
                 console.error('Unhandled error:', event.error);
+                window.appLogger.logError('Необработанная ошибка', {
+                    message: event.error?.message,
+                    stack: event.error?.stack,
+                    source: event.filename,
+                    line: event.lineno,
+                    column: event.colno
+                });
+                
                 try {
                     notifications.show(i18n.get('error_unexpected'), 'error');
                 } catch (e) {
@@ -3116,6 +3392,8 @@ const errorHandler = {
             
             window.addEventListener('unhandledrejection', (event) => {
                 console.error('Unhandled promise rejection:', event.reason);
+                window.appLogger.logError('Необработанная ошибка в промисе', event.reason);
+                
                 try {
                     notifications.show(i18n.get('error_unexpected'), 'error');
                 } catch (e) {
@@ -3123,9 +3401,10 @@ const errorHandler = {
                     alert('Произошла непредвиденная ошибка при асинхронной операции');
                 }
             });
-            console.log('Global error handlers set up successfully');
+            window.appLogger.logInfo('Глобальные обработчики ошибок установлены');
         } catch (e) {
             console.error('Failed to set up global error handlers:', e);
+            window.appLogger.logError('Ошибка при установке глобальных обработчиков', e);
         }
     }
 };
@@ -3397,8 +3676,5 @@ document.querySelector('#invites-admin-tab')?.addEventListener('click', () => {
         if (userLimitAdmin) userLimitAdmin.value = dataCache.inviteLimits.global_limits.user;
     }
 });
-
-// Настройка обработчиков административных функций
-setupAdminEventHandlers();
 
 // Обработчик поиска ключей

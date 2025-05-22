@@ -493,4 +493,61 @@ h1.admin-title {
 .export-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 15px rgba(var(--primary-color-rgb), 0.4);
+}
+
+/* Дополнительные стили для системы логов */
+.log-container {
+    font-family: monospace;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px;
+    background-color: var(--highlight-bg);
+}
+
+.log-entry {
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    position: relative;
+}
+
+.log-details {
+    font-size: 0.8rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.log-filter-active {
+    box-shadow: 0 0 0 2px var(--primary-color);
+}
+
+/* Стили для кнопок фильтрации */
+.log-filter-buttons {
+    margin-bottom: 10px;
+}
+
+.log-filter-buttons .btn {
+    margin-right: 5px;
+}
+
+/* Стилизация скроллбара для логов */
+.log-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.log-container::-webkit-scrollbar-track {
+    background: var(--card-bg);
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background: var(--secondary-bg);
+    border-radius: 3px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
 } 
