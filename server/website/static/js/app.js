@@ -1027,20 +1027,47 @@ async function loadAdminData() {
                 <td>${status}</td>
                 <td>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Никогда'}</td>
                 <td>${utils.formatIpAddress(user.last_ip)}</td>
-                <td>
-                    <div class="action-buttons">
-                    ${user.is_banned ? 
-                            `<button class="btn btn-success btn-sm unban-user" data-id="${user.id}">Разбл</button>` :
-                            `<button class="btn btn-danger btn-sm ban-user" data-id="${user.id}">Блок</button>`
-                    }
-                        <div class="user-role-buttons d-inline-flex" data-user-id="${user.id}"></div>
-                    </div>
-                </td>
+                <td><div class="action-buttons"></div></td>
             `;
             
-            // Внутри pageUsers.forEach(user => { ... })
-            // После блока с action-buttons:
+            const actionsDiv = row.querySelector('.action-buttons');
+            
+            // Далее добавляем кнопки только если есть права
+            if (user.is_banned ? userData && userData.is_admin : userData && (userData.is_admin || userData.is_support)) {
+                // ... добавление кнопок бан/разбан ...
+                const banUserBtn = document.createElement('button');
+                banUserBtn.className = 'btn btn-danger btn-sm ml-1';
+                banUserBtn.textContent = 'Блок';
+                banUserBtn.title = 'Заблокировать пользователя';
+                banUserBtn.addEventListener('click', async () => {
+                    try {
+                        await api.banUser(user.id);
+                        dataCache.clearCache('users'); // Очищаем кэш
+                        loadAdminData();
+                    } catch (error) {
+                        alert(`Ошибка блокировки пользователя: ${error.message}`);
+                    }
+                });
+                actionsDiv.appendChild(banUserBtn);
+                
+                const unbanUserBtn = document.createElement('button');
+                unbanUserBtn.className = 'btn btn-success btn-sm ml-1';
+                unbanUserBtn.textContent = 'Разбл';
+                unbanUserBtn.title = 'Разблокировать пользователя';
+                unbanUserBtn.addEventListener('click', async () => {
+                    try {
+                        await api.unbanUser(user.id);
+                        dataCache.clearCache('users'); // Очищаем кэш
+                        loadAdminData();
+                    } catch (error) {
+                        alert(`Ошибка разблокировки пользователя: ${error.message}`);
+                    }
+                });
+                actionsDiv.appendChild(unbanUserBtn);
+            }
+            
             if (user.discord_linked && userData && userData.is_admin) {
+                // ... кнопка отвязки Discord ...
                 const unlinkBtn = document.createElement('button');
                 unlinkBtn.className = 'btn btn-warning btn-sm ml-1';
                 unlinkBtn.textContent = 'Отвязать Discord';
@@ -1061,11 +1088,11 @@ async function loadAdminData() {
                         }
                     }
                 });
-                row.querySelector('.action-buttons').appendChild(unlinkBtn);
+                actionsDiv.appendChild(unlinkBtn);
             }
             
-            // Смена пароля пользователя (для админов)
             if (userData && userData.is_admin) {
+                // ... кнопка смены пароля ...
                 const changePwdBtn = document.createElement('button');
                 changePwdBtn.className = 'btn btn-secondary btn-sm ml-1';
                 changePwdBtn.textContent = 'Сменить пароль';
@@ -1074,7 +1101,7 @@ async function loadAdminData() {
                     e.stopPropagation();
                     showChangePasswordModal(user.id, user.username);
                 });
-                row.querySelector('.action-buttons').appendChild(changePwdBtn);
+                actionsDiv.appendChild(changePwdBtn);
             }
             
             tableBody.appendChild(row);
