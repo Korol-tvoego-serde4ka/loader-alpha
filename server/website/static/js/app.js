@@ -299,7 +299,34 @@ const api = {
     // Изменение роли пользователя (для админов)
     setUserRole: (userId, role) => {
         return api.request(`/admin/users/${userId}/role`, 'POST', { role });
-    }
+    },
+    
+    // Изменение пароля
+    changePassword: async (currentPassword, newPassword) => {
+        try {
+            const response = await fetch('/api/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Ошибка при изменении пароля');
+            }
+            
+            return data;
+        } catch (error) {
+            throw error;
+        }
+    },
 };
 
 // Утилиты для форматирования
@@ -2669,5 +2696,96 @@ const secureAuth = {
         };
     }
 };
+
+// Функция для отображения информации о профиле
+function displayProfileInfo(userData) {
+    const profileInfo = document.getElementById('profile-info');
+    if (profileInfo) {
+        profileInfo.innerHTML = `
+            <div class="mb-3">
+                <strong>Имя пользователя:</strong> ${userData.username}
+            </div>
+            <div class="mb-3">
+                <strong>Email:</strong> ${userData.email}
+            </div>
+            <div class="mb-3">
+                <strong>Дата регистрации:</strong> ${new Date(userData.created_at).toLocaleString()}
+            </div>
+            <div class="mb-3">
+                <strong>Discord:</strong> ${userData.discord_linked ? userData.discord_username : 'Не привязан'}
+            </div>
+        `;
+    }
+}
+
+// Обработчик формы изменения пароля
+const changePasswordForm = document.getElementById('change-password-form');
+if (changePasswordForm) {
+    changePasswordForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const currentPassword = document.getElementById('current-password')?.value || '';
+        const newPassword = document.getElementById('new-password')?.value || '';
+        const confirmNewPassword = document.getElementById('confirm-new-password')?.value || '';
+        const changePasswordError = document.getElementById('change-password-error');
+        
+        if (changePasswordError) changePasswordError.style.display = 'none';
+        
+        // Проверка совпадения паролей
+        if (newPassword !== confirmNewPassword) {
+            if (changePasswordError) {
+                changePasswordError.textContent = i18n.get('error_passwords_match');
+                changePasswordError.style.display = 'block';
+            }
+            return;
+        }
+        
+        // Проверка сложности пароля
+        const passwordStrength = secureAuth.checkPasswordStrength(newPassword);
+        if (passwordStrength.score < 2) {
+            if (changePasswordError) {
+                changePasswordError.textContent = i18n.get('password_too_weak');
+                changePasswordError.style.display = 'block';
+            }
+            return;
+        }
+        
+        try {
+            const changePasswordButton = document.querySelector('#change-password-form button[type="submit"]');
+            if (changePasswordButton) {
+                changePasswordButton.disabled = true;
+                changePasswordButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Изменение...';
+            }
+            
+            await api.changePassword(currentPassword, newPassword);
+            
+            // Показываем уведомление об успешном изменении пароля
+            notifications.show('Пароль успешно изменен', 'success');
+            
+            // Очищаем форму
+            changePasswordForm.reset();
+            
+        } catch (error) {
+            if (changePasswordError) {
+                changePasswordError.textContent = error.message;
+                changePasswordError.style.display = 'block';
+            }
+        } finally {
+            const changePasswordButton = document.querySelector('#change-password-form button[type="submit"]');
+            if (changePasswordButton) {
+                changePasswordButton.disabled = false;
+                changePasswordButton.textContent = 'Изменить пароль';
+            }
+        }
+    });
+}
+
+// Проверка надежности нового пароля при вводе
+const newPasswordField = document.getElementById('new-password');
+if (newPasswordField) {
+    newPasswordField.addEventListener('input', function() {
+        secureAuth.showPasswordStrength(this.value, 'new-password-strength');
+    });
+}
 
 // ... existing code ... 

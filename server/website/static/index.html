@@ -61,7 +61,7 @@
         <div id="home-page" class="page-content">
             <div class="jumbotron bg-secondary text-white">
                 <h1 class="display-4">ZalypaSPB</h1>
-                <p class="lead">Система лоадера для Minecraft с авторизацией по ключам и интеграцией с Discord</p>
+                <p class="lead">Система лоадера для PUBGM с авторизацией по ключам и интеграцией с Discord</p>
                 <hr class="my-4">
                 <p>Для использования лоадера необходимо зарегистрироваться на сайте и активировать ключ.</p>
                 <p>Новым пользователям выдается тестовый ключ на 24 часа.</p>
@@ -784,6 +784,43 @@
                 </div>
             </div>
         </div>
+
+        <!-- Страница профиля пользователя -->
+        <div id="profile-page" class="page-content" style="display: none;">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card bg-secondary">
+                        <div class="card-header">
+                            <h4>Профиль пользователя</h4>
+                        </div>
+                        <div class="card-body">
+                            <div id="profile-info">
+                                <!-- Информация о пользователе будет добавлена динамически -->
+                            </div>
+                            <hr>
+                            <h5>Изменить пароль</h5>
+                            <form id="change-password-form">
+                                <div class="form-group">
+                                    <label for="current-password">Текущий пароль</label>
+                                    <input type="password" class="form-control" id="current-password" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-password">Новый пароль</label>
+                                    <input type="password" class="form-control" id="new-password" required>
+                                    <div id="new-password-strength" style="display: none;"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="confirm-new-password">Подтвердите новый пароль</label>
+                                    <input type="password" class="form-control" id="confirm-new-password" required>
+                                </div>
+                                <div class="alert alert-danger" id="change-password-error" style="display: none;"></div>
+                                <button type="submit" class="btn btn-primary">Изменить пароль</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <footer class="bg-dark text-white mt-5 p-4">
@@ -791,10 +828,10 @@
             <div class="row">
                 <div class="col-md-6">
                     <h5>ZalypaSPB</h5>
-                    <p>Система лоадера для Minecraft с авторизацией по ключам и интеграцией с Discord</p>
+                    <p>Система лоадера для PUBGM с авторизацией по ключам и интеграцией с Discord</p>
                 </div>
                 <div class="col-md-6 text-md-right">
-                    <p>&copy; 2024 ZalypaSPB. Все права защищены.</p>
+                    <p>&copy; 2028 ZalypaSPB. Все права правы, все лева левы.</p>
                 </div>
             </div>
         </div>

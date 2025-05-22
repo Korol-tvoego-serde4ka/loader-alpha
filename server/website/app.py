@@ -1320,6 +1320,33 @@ class AdminGetCleanupStats(Resource):
             # Возвращаем ошибку в формате JSON
             return {"message": f"Ошибка при получении статистики: {str(e)}"}, 500
 
+class ChangePassword(Resource):
+    @jwt_required()
+    def post(self):
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+        
+        db = get_db()
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+            
+        if user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        
+        # Проверка текущего пароля
+        if not pwd_context.verify(current_password, user.password_hash):
+            return {"message": "Неверный текущий пароль"}, 401
+        
+        # Обновление пароля
+        user.password_hash = hash_password(new_password)
+        db.commit()
+        
+        return {"message": "Пароль успешно изменен"}
+
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
 api.add_resource(Register, "/api/users/register")
@@ -1350,6 +1377,7 @@ api.add_resource(AdminRestoreKey, "/api/admin/keys/<int:key_id>/restore")
 api.add_resource(AdminBulkKeyAction, "/api/admin/keys/bulk-action")
 api.add_resource(AdminCleanupKeys, "/api/admin/keys/cleanup")
 api.add_resource(AdminGetCleanupStats, "/api/admin/keys/stats")
+api.add_resource(ChangePassword, "/api/change-password")
 
 # Основной маршрут для одностраничного приложения
 @app.route('/', defaults={'path': ''})
