@@ -3675,3 +3675,4 @@ function showChangePasswordModal(userId, username) {
 document.querySelector('#all-keys-tab')?.addEventListener('click', loadAllKeys);
 
 // Обработчик поиска ключей
+}
