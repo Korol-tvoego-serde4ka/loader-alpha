@@ -183,8 +183,8 @@ After=network.target postgresql.service
 
 [Service]
 User=your_user
-WorkingDirectory=/path/to/loader-alpha/server/website
-ExecStart=/usr/bin/python3 app.py
+WorkingDirectory=/path/to/loader-alpha/server
+ExecStart=/usr/bin/python3 website/app.py
 Restart=always
 RestartSec=10
 

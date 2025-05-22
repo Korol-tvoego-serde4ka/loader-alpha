@@ -1988,7 +1988,7 @@ function setupAdminEventHandlers() {
     
     // Поиск заголовка
     document.querySelectorAll('.card-header').forEach(header => {
-        if (header.querySelector('#admin-invites-search') || header.querySelector('.admin-invites-search')) {
+        if (header.querySelector('#admin-invites-search') || header.querySelector('.admin-invites-search') || header.textContent.includes('Все приглашения')) {
             adminInvitesHeader = header;
         }
     });
