@@ -950,14 +950,16 @@ async function loadDiscordStatus() {
         }
         
         try {
+            const notLinkedBlock = document.getElementById('discord-not-linked');
+            if (notLinkedBlock) {
+                notLinkedBlock.querySelectorAll('.btn-discord-link').forEach(btn => btn.remove());
+            }
             const discordLink = await api.getDiscordInviteLink();
             const discordLinkBtn = document.createElement('a');
             discordLinkBtn.href = discordLink;
             discordLinkBtn.target = '_blank';
-            discordLinkBtn.className = 'btn btn-info mt-3';
+            discordLinkBtn.className = 'btn btn-info mt-3 btn-discord-link';
             discordLinkBtn.textContent = 'Перейти в Discord';
-            // Вставим кнопку в discord-not-linked
-            const notLinkedBlock = document.getElementById('discord-not-linked');
             if (notLinkedBlock) notLinkedBlock.appendChild(discordLinkBtn);
         } catch (e) { /* ignore */ }
     } catch (error) {
