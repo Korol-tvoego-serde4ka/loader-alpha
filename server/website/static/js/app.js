@@ -1032,38 +1032,46 @@ async function loadAdminData() {
             
             const actionsDiv = row.querySelector('.action-buttons');
             
-            // Далее добавляем кнопки только если есть права
-            if (user.is_banned ? userData && userData.is_admin : userData && (userData.is_admin || userData.is_support)) {
-                // ... добавление кнопок бан/разбан ...
-                const banUserBtn = document.createElement('button');
-                banUserBtn.className = 'btn btn-danger btn-sm ml-1';
-                banUserBtn.textContent = 'Блок';
-                banUserBtn.title = 'Заблокировать пользователя';
-                banUserBtn.addEventListener('click', async () => {
-                    try {
-                        await api.banUser(user.id);
-                        dataCache.clearCache('users'); // Очищаем кэш
-                        loadAdminData();
-                    } catch (error) {
-                        alert(`Ошибка блокировки пользователя: ${error.message}`);
-                    }
-                });
-                actionsDiv.appendChild(banUserBtn);
-                
-                const unbanUserBtn = document.createElement('button');
-                unbanUserBtn.className = 'btn btn-success btn-sm ml-1';
-                unbanUserBtn.textContent = 'Разбл';
-                unbanUserBtn.title = 'Разблокировать пользователя';
-                unbanUserBtn.addEventListener('click', async () => {
-                    try {
-                        await api.unbanUser(user.id);
-                        dataCache.clearCache('users'); // Очищаем кэш
-                        loadAdminData();
-                    } catch (error) {
-                        alert(`Ошибка разблокировки пользователя: ${error.message}`);
-                    }
-                });
-                actionsDiv.appendChild(unbanUserBtn);
+            // Тестовая кнопка для всех (можно убрать после проверки)
+            const infoBtn = document.createElement('button');
+            infoBtn.className = 'btn btn-info btn-sm ml-1';
+            infoBtn.textContent = 'Подробнее';
+            infoBtn.onclick = (e) => { e.stopPropagation(); alert(`ID: ${user.id}\nИмя: ${user.username}`); };
+            actionsDiv.appendChild(infoBtn);
+            
+            // Кнопка бан/разбан
+            if (userData && (userData.is_admin || userData.is_support)) {
+                if (user.is_banned) {
+                    const unbanUserBtn = document.createElement('button');
+                    unbanUserBtn.className = 'btn btn-success btn-sm ml-1';
+                    unbanUserBtn.textContent = 'Разбл';
+                    unbanUserBtn.title = 'Разблокировать пользователя';
+                    unbanUserBtn.addEventListener('click', async () => {
+                        try {
+                            await api.unbanUser(user.id);
+                            dataCache.clearCache('users');
+                            loadAdminData();
+                        } catch (error) {
+                            alert(`Ошибка разблокировки пользователя: ${error.message}`);
+                        }
+                    });
+                    actionsDiv.appendChild(unbanUserBtn);
+                } else {
+                    const banUserBtn = document.createElement('button');
+                    banUserBtn.className = 'btn btn-danger btn-sm ml-1';
+                    banUserBtn.textContent = 'Блок';
+                    banUserBtn.title = 'Заблокировать пользователя';
+                    banUserBtn.addEventListener('click', async () => {
+                        try {
+                            await api.banUser(user.id);
+                            dataCache.clearCache('users');
+                            loadAdminData();
+                        } catch (error) {
+                            alert(`Ошибка блокировки пользователя: ${error.message}`);
+                        }
+                    });
+                    actionsDiv.appendChild(banUserBtn);
+                }
             }
             
             if (user.discord_linked && userData && userData.is_admin) {
