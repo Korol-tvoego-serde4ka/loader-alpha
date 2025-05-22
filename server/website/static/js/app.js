@@ -339,6 +339,11 @@ const api = {
         const data = await response.json();
         return data.invite_link;
     },
+    
+    // Смена пароля пользователя (для админов)
+    adminChangeUserPassword: (userId, newPassword) => {
+        return api.request(`/admin/users/${userId}/change-password`, 'POST', { new_password: newPassword });
+    },
 };
 
 // Утилиты для форматирования
@@ -1057,6 +1062,19 @@ async function loadAdminData() {
                     }
                 });
                 row.querySelector('.action-buttons').appendChild(unlinkBtn);
+            }
+            
+            // Смена пароля пользователя (для админов)
+            if (userData && userData.is_admin) {
+                const changePwdBtn = document.createElement('button');
+                changePwdBtn.className = 'btn btn-secondary btn-sm ml-1';
+                changePwdBtn.textContent = 'Сменить пароль';
+                changePwdBtn.title = 'Сменить пароль пользователя';
+                changePwdBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showChangePasswordModal(user.id, user.username);
+                });
+                row.querySelector('.action-buttons').appendChild(changePwdBtn);
             }
             
             tableBody.appendChild(row);
@@ -2862,3 +2880,71 @@ if (usernameDisplay) {
     });
 }
 // ... existing code ... 
+
+// ... existing code ...
+row.addEventListener('click', function(e) {
+    if (e.target.tagName === 'BUTTON') return;
+    // Скрыть действия у всех строк
+    document.querySelectorAll('#users-table tbody tr').forEach(r => r.classList.remove('active-row'));
+    // Показать только у текущей
+    row.classList.toggle('active-row');
+});
+// ... existing code ...
+
+// Добавим функцию showChangePasswordModal
+function showChangePasswordModal(userId, username) {
+    // Удаляем старое модальное окно если есть
+    document.getElementById('admin-change-password-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'admin-change-password-modal';
+    modal.innerHTML = `
+    <div class="modal fade show" tabindex="-1" style="display:block; background:rgba(0,0,0,0.5);">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Смена пароля для пользователя: ${username}</h5>
+            <button type="button" class="close" id="close-admin-change-password-modal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <input type="password" class="form-control mb-2" id="admin-new-password" placeholder="Новый пароль">
+            <input type="password" class="form-control mb-2" id="admin-confirm-password" placeholder="Подтвердите пароль">
+            <div class="alert alert-danger" id="admin-change-password-error" style="display:none"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="close-admin-change-password-modal2">Отмена</button>
+            <button class="btn btn-primary" id="admin-change-password-submit">Сменить</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    // Закрытие
+    const closeModal = () => modal.remove();
+    document.getElementById('close-admin-change-password-modal').onclick = closeModal;
+    document.getElementById('close-admin-change-password-modal2').onclick = closeModal;
+    // Сабмит
+    document.getElementById('admin-change-password-submit').onclick = async () => {
+        const newPassword = document.getElementById('admin-new-password').value;
+        const confirmPassword = document.getElementById('admin-confirm-password').value;
+        const errorDiv = document.getElementById('admin-change-password-error');
+        errorDiv.style.display = 'none';
+        if (newPassword !== confirmPassword) {
+            errorDiv.textContent = 'Пароли не совпадают';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        if (newPassword.length < 8) {
+            errorDiv.textContent = 'Пароль слишком короткий';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        try {
+            await api.adminChangeUserPassword(userId, newPassword);
+            notifications.show('Пароль успешно изменён', 'success');
+            closeModal();
+        } catch (e) {
+            errorDiv.textContent = e.message;
+            errorDiv.style.display = 'block';
+        }
+    };
+}

@@ -1373,6 +1373,27 @@ class DiscordInviteLink(Resource):
         link = os.getenv("DISCORD_INVITE_LINK", "https://discord.com/")
         return {"invite_link": link}
 
+class AdminChangeUserPassword(Resource):
+    @jwt_required()
+    def post(self, user_id):
+        current_user_id = get_jwt_identity()
+        db = get_db()
+        current_user = db.query(User).filter(User.id == current_user_id).first()
+        if not current_user or not current_user.is_admin:
+            return {"message": "Недостаточно прав"}, 403
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+        data = request.get_json()
+        new_password = data.get("new_password")
+        if not new_password or len(new_password) < 8:
+            return {"message": "Пароль слишком короткий"}, 400
+        user.password_hash = hash_password(new_password)
+        db.commit()
+        return {"message": "Пароль успешно изменён"}
+
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
 api.add_resource(Register, "/api/users/register")
@@ -1406,6 +1427,7 @@ api.add_resource(AdminGetCleanupStats, "/api/admin/keys/stats")
 api.add_resource(ChangePassword, "/api/change-password")
 api.add_resource(AdminUnlinkDiscord, "/api/admin/users/<int:user_id>/unlink-discord")
 api.add_resource(DiscordInviteLink, "/api/discord/invite-link")
+api.add_resource(AdminChangeUserPassword, "/api/admin/users/<int:user_id>/change-password")
 
 # Основной маршрут для одностраничного приложения
 @app.route('/', defaults={'path': ''})
