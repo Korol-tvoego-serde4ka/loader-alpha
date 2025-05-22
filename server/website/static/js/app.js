@@ -3,8 +3,11 @@
 // Проверка наличия глобальной переменной API_URL
 if (typeof API_URL === 'undefined') {
     console.error('API_URL не определен. Проверьте подключение config.js');
-    // Fallback значение
+    // Используем резервный путь, если API_URL не найден
     window.API_URL = '/api';
+} else {
+    // Если API_URL определен, используем его в качестве глобального
+    window.API_URL = API_URL;
 }
 
 // Глобальные переменные
@@ -1568,7 +1571,8 @@ async function loadAdminData() {
 }
 
 
-    
+// Функция для загрузки приглашений в админке
+async function loadAdminInvites() {    
     try {
         window.appLogger.logInfo("Начинаем загрузку приглашений в админке");
         let invitesData = { invites: [] };
