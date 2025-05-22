@@ -303,10 +303,13 @@ const api = {
             // Логируем статус ответа
             window.appLogger.logInfo(`API ответ статус: ${response.status} ${response.statusText} для ${endpoint}`);
             
+            // Клонируем ответ, чтобы можно было прочитать его несколько раз
+            const responseClone = response.clone();
+            
             if (!response.ok) {
                 // Для ошибок пытаемся получить сообщение из JSON, если это возможно
                 try {
-                    const errorJson = await response.json();
+                    const errorJson = await responseClone.json();
                     window.appLogger.logError(`API ошибка: ${endpoint}`, errorJson);
                     throw new Error(errorJson.message || `HTTP ошибка ${response.status}`);
                 } catch (jsonError) {
@@ -321,7 +324,7 @@ const api = {
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 const jsonResponse = await response.json();
-                console.log(`API ответ: ${endpoint}`, jsonResponse);
+                window.appLogger.logInfo(`API ответ данные: ${endpoint}`, jsonResponse);
                 return jsonResponse;
             } else {
                 const responseText = await response.text();
@@ -339,8 +342,26 @@ const api = {
     },
     
     // Авторизация
-    login: (username, password) => {
-        return api.request('/auth/login', 'POST', { username, password }, false);
+    login: async (username, password) => {
+        try {
+            // Используем fetch напрямую для авторизации, чтобы избежать проблем с body stream
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || `HTTP ошибка ${response.status}`);
+            }
+            
+            return data;
+        } catch (error) {
+            window.appLogger.logError('Ошибка авторизации:', error);
+            throw error;
+        }
     },
     
     // Регистрация
@@ -1540,11 +1561,25 @@ async function loadAdminData() {
 
 // Загрузка приглашений в админке
 async function loadAdminInvites() {
+    window.appLogger.logInfo("Запуск функции loadAdminInvites");
+    
     const adminInvitesLoading = document.getElementById('admin-invites-loading');
     const adminInvitesList = document.getElementById('admin-invites-list');
+    const adminInvitesTableBody = document.getElementById('admin-invites-table-body');
     
     if (adminInvitesLoading) adminInvitesLoading.style.display = 'block';
     if (adminInvitesList) adminInvitesList.style.display = 'none';
+    
+    // Проверяем, что таблица доступна, если нет - выводим сообщение
+    if (!adminInvitesTableBody) {
+        window.appLogger.logError("Не найден элемент таблицы admin-invites-table-body");
+        if (adminInvitesLoading) adminInvitesLoading.style.display = 'none';
+        if (adminInvitesList) {
+            adminInvitesList.innerHTML = '<div class="alert alert-danger">Ошибка инициализации таблицы приглашений. Обновите страницу.</div>';
+            adminInvitesList.style.display = 'block';
+        }
+        return;
+    }
     
     try {
         window.appLogger.logInfo("Начинаем загрузку приглашений в админке");
@@ -1614,7 +1649,7 @@ async function loadAdminInvites() {
         dataCache.updateCache('inviteLimits', limitsData);
         
         const invites = invitesData.invites;
-        console.log(`Количество загруженных приглашений: ${invites ? invites.length : 0}`);
+        window.appLogger.logInfo(`Количество загруженных приглашений: ${invites ? invites.length : 0}`);
         
         // Копируем значения лимитов в форму в админской вкладке ПриглОчки
         const adminLimitValueAdmin = document.getElementById('admin-limit-value-admin');
@@ -1627,8 +1662,21 @@ async function loadAdminInvites() {
         
         // Отображение приглашений
         if (!invites || invites.length === 0) {
-            console.log("Список приглашений пуст");
-            if (adminInvitesList) adminInvitesList.innerHTML = '<p>Нет приглашений для отображения.</p>';
+            window.appLogger.logInfo("Список приглашений пуст");
+            if (adminInvitesList) {
+                adminInvitesList.innerHTML = '<div class="alert alert-info">Нет приглашений для отображения. <button id="admin-create-invite" class="btn btn-primary btn-sm ml-2">Создать приглашение</button></div>';
+                adminInvitesList.style.display = 'block';
+                
+                // Добавляем обработчик для создания приглашения
+                document.getElementById('admin-create-invite')?.addEventListener('click', function() {
+                    generateInvite();
+                });
+            }
+            
+            // Отображаем пустую таблицу
+            if (adminInvitesLoading) adminInvitesLoading.style.display = 'none';
+            const tableBody = document.getElementById('admin-invites-table-body');
+            if (tableBody) tableBody.innerHTML = '<tr><td colspan="8" class="text-center">Нет приглашений для отображения</td></tr>';
         } else {
             // Фильтрация по поисковому запросу
             const searchQuery = document.getElementById('admin-invites-search')?.value?.toLowerCase() || '';
@@ -1642,20 +1690,19 @@ async function loadAdminInvites() {
                 );
             }
             
-            console.log("Отфильтрованные приглашения:", filteredInvites.length);
+            window.appLogger.logInfo("Отфильтрованные приглашения:", { total: filteredInvites.length });
             
             // Получаем данные только для текущей страницы
             const pageInvites = pagination.getPageData('admin-invites', filteredInvites);
-            console.log("Приглашения для текущей страницы:", pageInvites.length);
+            window.appLogger.logInfo("Приглашения для текущей страницы:", { count: pageInvites.length });
             
             const tableBody = document.getElementById('admin-invites-table-body');
-            console.log("Таблица найдена:", !!tableBody);
             
             if (tableBody) {
                 tableBody.innerHTML = '';
                 
                 pageInvites.forEach(invite => {
-                    console.log("Обработка приглашения:", invite);
+                    window.appLogger.logInfo("Добавление приглашения в таблицу", { id: invite.id, code: invite.code });
                     const row = document.createElement('tr');
                     const status = invite.used ? 'Использован' : 'Активен';
                     
@@ -1751,11 +1798,26 @@ async function loadAdminInvites() {
             }
         }
     } catch (error) {
-        console.error('Ошибка при загрузке приглашений в админке:', error);
-        if (adminInvitesList) adminInvitesList.innerHTML = `<p class="text-danger">Ошибка при загрузке приглашений: ${error.message}</p>`;
+        window.appLogger.logError('Ошибка при загрузке приглашений в админке:', error);
+        if (adminInvitesList) {
+            adminInvitesList.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>Ошибка при загрузке приглашений</h5>
+                    <p>${error.message}</p>
+                    <button id="retry-admin-invites-btn" class="btn btn-primary btn-sm">Попробовать снова</button>
+                </div>`;
+            adminInvitesList.style.display = 'block';
+            
+            // Добавляем обработчик для кнопки повторной загрузки
+            document.getElementById('retry-admin-invites-btn')?.addEventListener('click', function() {
+                dataCache.clearCache('invites');
+                loadAdminInvites();
+            });
+        }
+        
+        utils.showNotification('danger', `Ошибка при загрузке приглашений: ${error.message}`);
     } finally {
         if (adminInvitesLoading) adminInvitesLoading.style.display = 'none';
-        if (adminInvitesList) adminInvitesList.style.display = 'block';
     }
 }
 
