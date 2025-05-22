@@ -2527,31 +2527,31 @@ async function initApp() {
         // Настройка обработчика ошибок
         errorHandler.setupGlobalHandler();
         
-    // Проверка авторизации
-    const isAuthenticated = await auth.checkAuth();
-    
-    // Определение стартовой страницы
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-        if (hash === 'login' || hash === 'register') {
-            if (isAuthenticated) {
+        // Проверка авторизации
+        const isAuthenticated = await auth.checkAuth();
+        
+        // Определение стартовой страницы
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+            if (hash === 'login' || hash === 'register') {
+                if (isAuthenticated) {
+                    navigation.navigateTo('home');
+                } else {
+                    navigation.navigateTo(hash);
+                }
+            } else if (['keys', 'invites', 'discord', 'admin'].includes(hash)) {
+                if (isAuthenticated) {
+                    navigation.navigateTo(hash);
+                } else {
+                    navigation.navigateTo('login');
+                }
+            } else {
                 navigation.navigateTo('home');
-            } else {
-                navigation.navigateTo(hash);
-            }
-        } else if (['keys', 'invites', 'discord', 'admin'].includes(hash)) {
-            if (isAuthenticated) {
-                navigation.navigateTo(hash);
-            } else {
-                navigation.navigateTo('login');
             }
         } else {
             navigation.navigateTo('home');
         }
-    } else {
-        navigation.navigateTo('home');
-    }
-    
+        
         // Инициализация утилит для работы с таблицами
         tableUtils.init();
         
@@ -2966,8 +2966,7 @@ function filterLogs(type = 'all', searchText = '') {
     });
 }
 
-// Запуск приложения при загрузке страницы
-document.addEventListener('DOMContentLoaded', initApp); 
+// Запуск приложения при загрузке страницы уже есть в другом месте кода 
 
 // Утилиты для экспорта данных
 const exportUtils = {
@@ -3593,9 +3592,7 @@ if (newPasswordField) {
     });
 }
 
-// ... existing code ... 
-
-// Функция setupEventHandlers
+// Добавление обработчиков для элементов профиля
 const usernameDisplay = document.getElementById('username-display');
 if (usernameDisplay) {
     usernameDisplay.addEventListener('click', (e) => {
@@ -3603,15 +3600,7 @@ if (usernameDisplay) {
         navigation.navigateTo('profile');
     });
 }
-// ... existing code ... 
-
-// ... existing code ...
-row.addEventListener('click', function(e) {
-    if (e.target.tagName === 'BUTTON' || e.target.closest('.action-buttons')) return;
-    document.querySelectorAll('#users-table tbody tr').forEach(r => r.classList.remove('active-row'));
-    row.classList.toggle('active-row');
-});
-// ... existing code ...
+// Это закомментировано, так как вызывает ошибку - переменная row не определена в этом контексте
 
 // Добавим функцию showChangePasswordModal
 function showChangePasswordModal(userId, username) {
@@ -3685,7 +3674,6 @@ function setupAdminEventHandlers() {
 }
 
 // Обработчик поиска ключей
-}
 
 // Запуск приложения при загрузке страницы
 document.addEventListener('DOMContentLoaded', initApp);
