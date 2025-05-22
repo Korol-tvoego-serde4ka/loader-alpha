@@ -29,8 +29,12 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 print(f"Путь к родительской директории добавлен в sys.path: {parent_dir}")
 
-# Импортируем модели из родительской директории с абсолютным путем к БД
-os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(parent_dir, 'database.db')}"
+# Явно устанавливаем путь к БД - абсолютный путь
+DB_PATH = os.path.join(parent_dir, 'database.db')
+print(f"Абсолютный путь к БД: {DB_PATH}")
+
+# Устанавливаем базу напрямую в SQLAlchemy
+os.environ["DATABASE_URL"] = f"sqlite:///{DB_PATH}"
 print(f"Установлен DATABASE_URL: {os.environ['DATABASE_URL']}")
 
 from database.models import SessionLocal, User, Key, Invite, DiscordCode, RoleLimits, Base, engine
