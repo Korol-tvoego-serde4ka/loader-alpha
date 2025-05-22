@@ -26,32 +26,55 @@ def migrate_keys():
         logger.info("Начало миграции таблицы ключей...")
         db = SessionLocal()
         
-        # Проверка существования столбца expires_at
+        # 1. Проверка существования столбца duration
+        try:
+            db.execute(text("SELECT duration FROM keys LIMIT 1"))
+            logger.info("Столбец duration уже существует, пропускаем создание")
+            duration_exists = True
+        except Exception as e:
+            logger.info("Столбец duration не существует, создаем его")
+            duration_exists = False
+            
+        # Добавляем столбец duration, если его нет
+        if not duration_exists:
+            try:
+                db.execute(text("ALTER TABLE keys ADD COLUMN duration INTEGER DEFAULT 86400 NOT NULL"))
+                db.commit()
+                logger.info("Столбец duration успешно добавлен")
+            except Exception as e:
+                logger.error(f"Ошибка при добавлении столбца duration: {str(e)}")
+                db.rollback()
+                return False
+                
+        # 2. Проверка существования столбца expires_at
         try:
             db.execute(text("SELECT expires_at FROM keys LIMIT 1"))
             logger.info("Столбец expires_at уже существует, пропускаем создание")
-            column_exists = True
+            expires_exists = True
         except:
             logger.info("Столбец expires_at не существует, создаем его")
-            column_exists = False
+            expires_exists = False
         
-        # Добавляем столбец, если его нет
-        if not column_exists:
+        # Добавляем столбец expires_at, если его нет
+        if not expires_exists:
             try:
                 db.execute(text("ALTER TABLE keys ADD COLUMN expires_at TIMESTAMP"))
+                db.commit()
                 logger.info("Столбец expires_at успешно добавлен")
             except Exception as e:
-                logger.error(f"Ошибка при добавлении столбца: {str(e)}")
+                logger.error(f"Ошибка при добавлении столбца expires_at: {str(e)}")
+                db.rollback()
                 return False
         
-        # Обновляем значения expires_at для существующих записей
+        # 3. Обновляем значения expires_at для существующих записей
         try:
             # Получаем все ключи
             keys = db.query(Key).all()
             updated_count = 0
             
             for key in keys:
-                if not hasattr(key, "expires_at") or key.expires_at is None:
+                # Проверяем, есть ли необходимость обновить expires_at
+                if not key.expires_at:
                     # Вычисляем дату истечения
                     if key.activated_at:
                         key.expires_at = key.activated_at + datetime.timedelta(seconds=key.duration)
