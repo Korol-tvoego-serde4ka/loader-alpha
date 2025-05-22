@@ -1014,31 +1014,24 @@ async function loadAdminData() {
         // Отображаем текущую страницу данных
         pageUsers.forEach(user => {
             const row = document.createElement('tr');
-            const role = utils.getUserRole(user);
-            const status = user.is_banned ? 'Заблокирован' : 'Активен';
-            const discordStatus = user.discord_linked ? user.discord_username : 'Не привязан';
-            
             row.innerHTML = `
                 <td>${user.id}</td>
                 <td>${user.username}</td>
                 <td>${user.email}</td>
-                <td>${role}</td>
-                <td>${discordStatus}</td>
-                <td>${status}</td>
+                <td>${utils.getUserRole(user)}</td>
+                <td>${user.discord_linked ? user.discord_username : 'Не привязан'}</td>
+                <td>${user.is_banned ? 'Заблокирован' : 'Активен'}</td>
                 <td>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Никогда'}</td>
                 <td>${utils.formatIpAddress(user.last_ip)}</td>
                 <td><div class="action-buttons"></div></td>
             `;
-            
             const actionsDiv = row.querySelector('.action-buttons');
-            
             // Тестовая кнопка для всех (можно убрать после проверки)
             const infoBtn = document.createElement('button');
             infoBtn.className = 'btn btn-info btn-sm ml-1';
             infoBtn.textContent = 'Подробнее';
             infoBtn.onclick = (e) => { e.stopPropagation(); alert(`ID: ${user.id}\nИмя: ${user.username}`); };
             actionsDiv.appendChild(infoBtn);
-            
             // Кнопка бан/разбан
             if (userData && (userData.is_admin || userData.is_support)) {
                 if (user.is_banned) {
@@ -1073,9 +1066,7 @@ async function loadAdminData() {
                     actionsDiv.appendChild(banUserBtn);
                 }
             }
-            
             if (user.discord_linked && userData && userData.is_admin) {
-                // ... кнопка отвязки Discord ...
                 const unlinkBtn = document.createElement('button');
                 unlinkBtn.className = 'btn btn-warning btn-sm ml-1';
                 unlinkBtn.textContent = 'Отвязать Discord';
@@ -1098,9 +1089,7 @@ async function loadAdminData() {
                 });
                 actionsDiv.appendChild(unlinkBtn);
             }
-            
             if (userData && userData.is_admin) {
-                // ... кнопка смены пароля ...
                 const changePwdBtn = document.createElement('button');
                 changePwdBtn.className = 'btn btn-secondary btn-sm ml-1';
                 changePwdBtn.textContent = 'Сменить пароль';
@@ -1111,7 +1100,11 @@ async function loadAdminData() {
                 });
                 actionsDiv.appendChild(changePwdBtn);
             }
-            
+            row.addEventListener('click', function(e) {
+                if (e.target.tagName === 'BUTTON' || e.target.closest('.action-buttons')) return;
+                document.querySelectorAll('#users-table tbody tr').forEach(r => r.classList.remove('active-row'));
+                row.classList.toggle('active-row');
+            });
             tableBody.appendChild(row);
         });
         
