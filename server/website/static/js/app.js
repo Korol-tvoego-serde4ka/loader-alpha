@@ -1026,12 +1026,7 @@ async function loadAdminData() {
                 <td><div class="action-buttons"></div></td>
             `;
             const actionsDiv = row.querySelector('.action-buttons');
-            // Тестовая кнопка для всех (можно убрать после проверки)
-            const infoBtn = document.createElement('button');
-            infoBtn.className = 'btn btn-info btn-sm ml-1';
-            infoBtn.textContent = 'Подробнее';
-            infoBtn.onclick = (e) => { e.stopPropagation(); alert(`ID: ${user.id}\nИмя: ${user.username}`); };
-            actionsDiv.appendChild(infoBtn);
+            // Удалена тестовая кнопка "Подробнее" по требованию пользователя
             // Кнопка бан/разбан
             if (userData && (userData.is_admin || userData.is_support)) {
                 if (user.is_banned) {

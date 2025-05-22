@@ -303,7 +303,7 @@
                         <div class="flex-grow-1 mr-2">
                             <input type="text" class="form-control form-control-sm" id="invites-search" placeholder="Поиск приглашений...">
                         </div>
-                        <button class="btn btn-sm btn-outline-light" id="export-invites-btn">
+                        <button class="export-btn" id="export-invites-btn">
                             <i class="fas fa-download"></i> Экспорт
                         </button>
                     </div>
@@ -438,12 +438,12 @@
 
         <!-- Страница администрирования -->
         <div id="admin-page" class="page-content" style="display: none;">
-            <h2>Администрирование</h2>
-            <div class="alert alert-warning">
+            <h1 class="admin-title">Администрирование</h1>
+            <div class="admin-alert">
                 Эта страница доступна только для администраторов и саппорта.
             </div>
             
-            <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+            <ul class="nav nav-tabs admin-tabs" id="adminTabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link active" id="users-tab" data-toggle="tab" href="#users" role="tab">Пользователи</a>
                 </li>
@@ -457,13 +457,13 @@
             
             <div class="tab-content" id="adminTabsContent">
                 <div class="tab-pane fade show active" id="users" role="tabpanel">
-                    <div class="card bg-secondary mt-4">
+                    <div class="admin-container mt-4">
                         <div class="card-header">
                             <h4>Список пользователей</h4>
                         </div>
                         <div class="card-body">
                             <div class="mb-3 d-flex">
-                                <div class="flex-grow-1 mr-2">
+                                <div class="flex-grow-1 mr-2 admin-users-search">
                                     <input type="text" class="form-control form-control-sm" id="users-search" placeholder="Поиск пользователей...">
                                 </div>
                                 <div class="dropdown">
@@ -481,7 +481,7 @@
                                         <a class="dropdown-item toggle-column" data-table="users" data-column="7">IP-адрес</a>
                                     </div>
                                 </div>
-                                <button class="btn btn-sm btn-outline-light ml-2" id="export-users-btn">
+                                <button class="export-btn ml-2" id="export-users-btn">
                                     <i class="fas fa-download"></i> Экспорт
                                 </button>
                             </div>
@@ -516,11 +516,7 @@
                     </div>
                 </div>
                 
-                <div class="tab-pane fade" id="keys-admin" role="tabpanel">
-                    <div class="card bg-secondary mt-4">
-                        <div class="card-header">
-                            <h4>Генерация ключей</h4>
-                        </div>
+                                <div class="tab-pane fade" id="keys-admin" role="tabpanel">                    <div class="admin-container mt-4">                        <div class="card-header">                            <h4>Генерация ключей</h4>                        </div>
                         <div class="card-body">
                             <form id="generate-key-form">
                                 <div class="form-group">
@@ -546,14 +542,10 @@
                     </div>
                 </div>
                 
-                <div class="tab-pane fade" id="all-keys" role="tabpanel">
-                    <div class="card bg-secondary mt-4">
-                        <div class="card-header">
-                            <h4>Все ключи</h4>
-                        </div>
+                                <div class="tab-pane fade" id="all-keys" role="tabpanel">                    <div class="admin-container mt-4">                        <div class="card-header">                            <h4>Все ключи</h4>                        </div>
                         <div class="card-body">
                             <div class="mb-3 d-flex">
-                                <div class="flex-grow-1 mr-2">
+                                <div class="flex-grow-1 mr-2 admin-users-search">
                                     <input type="text" class="form-control form-control-sm" id="all-keys-search" placeholder="Поиск ключей...">
                                 </div>
                                 <div class="dropdown">
@@ -570,7 +562,7 @@
                                         <a class="dropdown-item toggle-column" data-table="all-keys" data-column="7">Статус</a>
                                     </div>
                                 </div>
-                                <button class="btn btn-sm btn-outline-light ml-2" id="export-all-keys-btn">
+                                <button class="export-btn ml-2" id="export-all-keys-btn">
                                     <i class="fas fa-download"></i> Экспорт
                                 </button>
                             </div>
