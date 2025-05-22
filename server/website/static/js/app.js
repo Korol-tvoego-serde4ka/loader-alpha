@@ -353,6 +353,11 @@ const api = {
     adminChangeUserPassword: (userId, newPassword) => {
         return api.request(`/admin/users/${userId}/change-password`, 'POST', { new_password: newPassword });
     },
+    
+    // Создание нового приглашения
+    generateInvite: () => {
+        return api.request('/invites/generate', 'POST');
+    },
 };
 
 // Утилиты для форматирования
@@ -411,6 +416,26 @@ const utils = {
         } else {
             return ip; // Внешний IP-адрес
         }
+    },
+    
+    // Показываем уведомление
+    showNotification: function(type, message) {
+        const notificationContainer = document.getElementById('notification-container');
+        if (!notificationContainer) {
+            console.error('Notification container not found');
+            return;
+        }
+        
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type}`;
+        notification.textContent = message;
+        
+        notificationContainer.appendChild(notification);
+        
+        // Автоматическое удаление уведомления через 5 секунд
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
     }
 };
 
@@ -983,6 +1008,48 @@ async function loadInvites() {
     }
 }
 
+// Функция для генерации нового приглашения
+async function generateInvite() {
+    try {
+        // Показываем индикатор загрузки
+        const invitesLoading = document.getElementById('invites-loading');
+        if (invitesLoading) invitesLoading.style.display = 'block';
+        
+        console.log("Отправляем запрос на генерацию приглашения");
+        const response = await api.generateInvite();
+        console.log("Ответ сервера при генерации приглашения:", response);
+        
+        if (response && response.code) {
+            // Очищаем кэш и перезагружаем список приглашений
+            console.log("Приглашение успешно создано:", response.code);
+            dataCache.clearCache('invites');
+            
+            // Перезагружаем списки приглашений
+            const isAdmin = document.getElementById('admin-tab');
+            if (isAdmin && isAdmin.classList.contains('active')) {
+                // Если активна вкладка админа, обновляем список в админке
+                await loadAdminInvites();
+            } else {
+                // Иначе обновляем обычный список приглашений
+                await loadInvites();
+            }
+            
+            // Показываем уведомление
+            utils.showNotification('success', `Новое приглашение создано: ${response.code}`);
+        } else {
+            console.error("Ошибка при создании приглашения: неверный формат ответа", response);
+            utils.showNotification('danger', 'Ошибка при создании приглашения');
+        }
+    } catch (error) {
+        console.error("Ошибка при создании приглашения:", error);
+        utils.showNotification('danger', `Ошибка при создании приглашения: ${error.message || 'неизвестная ошибка'}`);
+    } finally {
+        // Скрываем индикатор загрузки
+        const invitesLoading = document.getElementById('invites-loading');
+        if (invitesLoading) invitesLoading.style.display = 'none';
+    }
+}
+
 // Загрузка статуса Discord
 async function loadDiscordStatus() {
     document.getElementById('discord-status-loading').style.display = 'block';
@@ -1465,21 +1532,21 @@ function setupAdminEventHandlers() {
     const adminGenerateInviteButton = document.getElementById('admin-generate-invite-button');
     if (adminGenerateInviteButton) {
         adminGenerateInviteButton.addEventListener('click', async () => {
+            const button = adminGenerateInviteButton;
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Создание...';
+            }
+            
             try {
-                adminGenerateInviteButton.disabled = true;
-                adminGenerateInviteButton.textContent = 'Создание...';
-                
-                const result = await api.generateInvite();
-                
-                dataCache.clearCache('invites');
-                alert(`Приглашение создано: ${result.code}`);
-                loadAdminInvites();
+                await generateInvite();
             } catch (error) {
-                console.error('Ошибка создания приглашения:', error);
-                alert(`Ошибка при создании приглашения: ${error.message}`);
+                utils.showNotification('danger', `Ошибка создания приглашения: ${error.message}`);
             } finally {
-                adminGenerateInviteButton.disabled = false;
-                adminGenerateInviteButton.textContent = 'Создать приглашение';
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = 'Создать приглашение';
+                }
             }
         });
     }
@@ -2474,25 +2541,23 @@ function setupEventHandlers() {
         const generateInviteButton = document.getElementById('generate-invite-button');
         if (generateInviteButton) {
             generateInviteButton.addEventListener('click', async () => {
-        const button = document.getElementById('generate-invite-button');
+            const button = generateInviteButton;
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Создание...';
+            }
+            
+            try {
+                await generateInvite();
+            } catch (error) {
+                utils.showNotification('danger', `Ошибка создания приглашения: ${error.message}`);
+            } finally {
                 if (button) {
-        button.disabled = true;
-        button.textContent = 'Создание...';
+                    button.disabled = false;
+                    button.textContent = 'Создать приглашение';
                 }
-        
-        try {
-            await api.generateInvite();
-            loadInvites();
-        } catch (error) {
-            alert(`Ошибка создания приглашения: ${error.message}`);
-        } finally {
-                    const button = document.getElementById('generate-invite-button');
-                    if (button) {
-            button.disabled = false;
-            button.textContent = 'Создать приглашение';
-                    }
-        }
-    });
+            }
+        });
         }
     
     // Форма установки лимитов приглашений
