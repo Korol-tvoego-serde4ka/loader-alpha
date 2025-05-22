@@ -30,8 +30,23 @@ sys.path.append(parent_dir)
 print(f"Путь к родительской директории добавлен в sys.path: {parent_dir}")
 
 # Явно устанавливаем путь к БД - абсолютный путь
-DB_PATH = os.path.join(parent_dir, 'database.db')
+DB_PATH = os.path.abspath(os.path.join(parent_dir, 'database.db'))
 print(f"Абсолютный путь к БД: {DB_PATH}")
+
+# Копируем базу на место, если её нет в директории website
+website_db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
+print(f"Путь к БД в website: {website_db_path}")
+
+if not os.path.samefile(DB_PATH, website_db_path) if os.path.exists(website_db_path) else True:
+    print(f"Обновляем файл базы данных в website...")
+    import shutil
+    try:
+        if os.path.exists(website_db_path):
+            os.remove(website_db_path)
+        shutil.copy2(DB_PATH, website_db_path)
+        print(f"База данных скопирована из {DB_PATH} в {website_db_path}")
+    except Exception as e:
+        print(f"Ошибка при копировании базы данных: {str(e)}")
 
 # Устанавливаем базу напрямую в SQLAlchemy
 os.environ["DATABASE_URL"] = f"sqlite:///{DB_PATH}"
@@ -150,34 +165,110 @@ def generate_discord_code():
 # API ресурсы
 class Login(Resource):
     def post(self):
-        data = request.get_json()
-        username = data.get("username")
-        password = data.get("password")
-        
-        logger.info(f"Попытка входа пользователя: {username}")
-        print(f"******* ОТЛАДКА ВХОДА: Пользователь {username} пытается войти")
-        
-        db = get_db()
-        # Отладка всех пользователей в базе
-        all_users = db.query(User).all()
-        print(f"******* Все пользователи в системе: {[u.username for u in all_users]}")
-        print(f"******* Количество пользователей: {len(all_users)}")
-        
-        user = db.query(User).filter(User.username == username).first()
-        print(f"******* Найден пользователь {username}? {user is not None}")
-        
-        if not user:
-            logger.warning(f"Пользователь не найден: {username}")
-            print(f"******* Пользователь не найден: {username}")
-            return {"message": "Неверное имя пользователя или пароль"}, 401
+        try:
+            print("\n===== НАЧАЛО ОТЛАДКИ АУТЕНТИФИКАЦИИ =====")
+            # Исходные данные запроса
+            print(f"Полученные данные запроса: {request.data}")
+            data = request.get_json()
+            print(f"Распакованные данные JSON: {data}")
             
-        password_valid = pwd_context.verify(password, user.password_hash)
-        print(f"******* Пароль верный? {password_valid}")
-        print(f"******* Хеш в базе: {user.password_hash}")
-        
-        if not password_valid:
-            logger.warning(f"Неверный пароль для пользователя: {username}")
-            return {"message": "Неверное имя пользователя или пароль"}, 401
+            # Проверка, что data не None
+            if not data:
+                print("ОШИБКА: Нет данных JSON в запросе")
+                return {"message": "Неверный формат данных"}, 400
+                
+            username = data.get("username")
+            password = data.get("password")
+            
+            print(f"====== ДАННЫЕ ДЛЯ ВХОДА ======")
+            print(f"Пользователь: {username}")
+            print(f"Пароль получен: {'Да' if password else 'Нет'}")
+            
+            # Дополнительная проверка для админа
+            if username == "admin" and password == "adminpass123":
+                print("СПЕЦИАЛЬНАЯ ПРОВЕРКА: Выполняется вход администратора")
+                
+            logger.info(f"Попытка входа пользователя: {username}")
+            
+            # ПРЯМОЙ ДОСТУП К БАЗЕ ДАННЫХ для отладки
+            print("\n===== ПРЯМОЙ ДОСТУП К БАЗЕ ДАННЫХ =====")
+            direct_db_path = DB_PATH
+            print(f"Путь к базе для отладки: {direct_db_path}")
+            
+            try:
+                import sqlite3
+                conn = sqlite3.connect(direct_db_path)
+                cursor = conn.cursor()
+                
+                # Проверка структуры
+                cursor.execute("PRAGMA table_info(users)")
+                columns = cursor.fetchall()
+                print(f"Структура таблицы users: {columns}")
+                
+                # Проверка пользователей
+                cursor.execute("SELECT id, username, password_hash, is_admin FROM users")
+                all_users_raw = cursor.fetchall()
+                print(f"Пользователи через прямое подключение: {all_users_raw}")
+                
+                # Проверка конкретного пользователя
+                cursor.execute("SELECT id, username, password_hash, is_admin FROM users WHERE username=?", (username,))
+                user_raw = cursor.fetchone()
+                print(f"Пользователь через прямое подключение: {user_raw}")
+                
+                if user_raw:
+                    direct_hash = user_raw[2]
+                    print(f"Хеш пароля через прямое подключение: {direct_hash}")
+                    direct_verify = pwd_context.verify(password, direct_hash)
+                    print(f"Проверка пароля через прямое подключение: {direct_verify}")
+                    
+                    # Если прямая проверка пароля успешна, создаем токен напрямую
+                    if direct_verify:
+                        print("Прямая проверка пароля успешна!")
+                        expires = datetime.timedelta(days=1)
+                        access_token = create_access_token(identity=user_raw[0], expires_delta=expires)
+                        
+                        conn.close()
+                        return {
+                            "token": access_token,
+                            "expires_at": (datetime.datetime.utcnow() + expires).isoformat()
+                        }
+                
+                conn.close()
+            except Exception as direct_db_error:
+                print(f"Ошибка при прямой работе с БД: {direct_db_error}")
+                import traceback
+                traceback.print_exc()
+            
+            # Стандартная SQLAlchemy проверка
+            print("\n===== ПРОВЕРКА ЧЕРЕЗ SQLAlchemy =====")
+            db = get_db()
+            # Отладка всех пользователей в базе
+            all_users = db.query(User).all()
+            print(f"Все пользователи в системе: {[u.username for u in all_users]}")
+            print(f"Количество пользователей: {len(all_users)}")
+            
+            user = db.query(User).filter(User.username == username).first()
+            print(f"Найден пользователь {username}? {user is not None}")
+            
+            if not user:
+                logger.warning(f"Пользователь не найден: {username}")
+                print(f"Пользователь не найден: {username}")
+                return {"message": "Неверное имя пользователя или пароль"}, 401
+                
+            password_valid = pwd_context.verify(password, user.password_hash)
+            print(f"Пароль верный? {password_valid}")
+            print(f"Хеш в базе: {user.password_hash}")
+            
+            if not password_valid:
+                logger.warning(f"Неверный пароль для пользователя: {username}")
+                return {"message": "Неверное имя пользователя или пароль"}, 401
+                
+            print("\n===== КОНЕЦ ОТЛАДКИ АУТЕНТИФИКАЦИИ =====")
+        except Exception as e:
+            print(f"КРИТИЧЕСКАЯ ОШИБКА В АУТЕНТИФИКАЦИИ: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return {"message": "Внутренняя ошибка сервера при аутентификации"}, 500
         
         if user.is_banned:
             return {"message": "Ваш аккаунт заблокирован"}, 403
