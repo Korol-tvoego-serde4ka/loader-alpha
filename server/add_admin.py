@@ -8,13 +8,24 @@ parent_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(parent_dir)
 
 # Импорт моделей и сессии
-from database.models import User, SessionLocal
+from database.models import User, SessionLocal, Base, engine
 
 # Настройка шифрования паролей
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password):
     return pwd_context.hash(password)
+
+def create_tables():
+    """Создает все таблицы в базе данных, если их не существует"""
+    try:
+        print("Создание структуры базы данных...")
+        Base.metadata.create_all(bind=engine)
+        print("Таблицы базы данных успешно созданы")
+        return True
+    except Exception as e:
+        print(f"Ошибка при создании таблиц: {str(e)}")
+        return False
 
 def create_admin_user(username, email, password):
     # Получаем сессию базы данных
@@ -55,6 +66,11 @@ def create_admin_user(username, email, password):
         db.close()
 
 if __name__ == "__main__":
+    # Сначала создаем таблицы
+    if not create_tables():
+        print("Не удалось создать необходимые таблицы в базе данных.")
+        sys.exit(1)
+
     if len(sys.argv) != 4:
         print("Использование: python add_admin.py <username> <email> <password>")
         sys.exit(1)
