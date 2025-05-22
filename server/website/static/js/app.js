@@ -294,20 +294,33 @@ const api = {
         try {
             const response = await fetch(`${API_URL}${endpoint}`, options);
             
+            // Логируем статус ответа
+            window.appLogger.logInfo(`API ответ статус: ${response.status} ${response.statusText} для ${endpoint}`);
+            
+            if (!response.ok) {
+                // Для ошибок пытаемся получить сообщение из JSON, если это возможно
+                try {
+                    const errorJson = await response.json();
+                    window.appLogger.logError(`API ошибка: ${endpoint}`, errorJson);
+                    throw new Error(errorJson.message || `HTTP ошибка ${response.status}`);
+                } catch (jsonError) {
+                    // Если не удалось распарсить JSON, получаем текст ошибки
+                    const errorText = await response.text();
+                    window.appLogger.logError(`API ошибка (не JSON): ${endpoint}`, {status: response.status, text: errorText});
+                    throw new Error(`Ошибка сервера (${response.status}): Проверьте логи для деталей`);
+                }
+            }
+            
             // Проверяем, что ответ - это JSON
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 const jsonResponse = await response.json();
                 console.log(`API ответ: ${endpoint}`, jsonResponse);
-            
-            if (!response.ok) {
-                    throw new Error(jsonResponse.message || `HTTP ошибка ${response.status}`);
-                }
-                
                 return jsonResponse;
             } else {
-                console.error(`API ответ не в формате JSON: ${endpoint}`, await response.text());
-                throw new Error(`Ответ сервера не в формате JSON: ${response.statusText}`);
+                const responseText = await response.text();
+                window.appLogger.logError(`API ответ не в формате JSON: ${endpoint}`, responseText);
+                throw new Error(`Ответ сервера не в формате JSON (проверьте логи)`);
             }
         } catch (error) {
             console.error(`API ошибка: ${endpoint}`, error);
