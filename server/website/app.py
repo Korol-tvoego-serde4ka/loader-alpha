@@ -634,15 +634,15 @@ class DiscordRedeemKey(Resource):
         if key.user_id is None:
             key.user_id = user.id
             key.activated_at = datetime.datetime.utcnow()
-            
+        
             # Вычисляем разницу между созданием и истечением ключа (в секундах)
             original_duration = (key.expires_at - key.created_at).total_seconds()
             
             # Устанавливаем новую дату истечения от текущего момента
             key.expires_at = key.activated_at + datetime.timedelta(seconds=original_duration)
-            
-            db.commit()
-            db.refresh(key)
+        
+        db.commit()
+        db.refresh(key)
         
         # Обновление информации о входе
         ip_address = get_client_ip()

@@ -154,6 +154,8 @@ const api = {
             options.body = JSON.stringify(data);
         }
         
+        console.log(`API запрос: ${method} ${API_URL}${endpoint}`, options);
+        
         try {
             const response = await fetch(`${API_URL}${endpoint}`, options);
             
@@ -161,12 +163,15 @@ const api = {
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 const text = await response.text();
+                console.error(`Сервер вернул не JSON: ${text.substring(0, 100)}...`);
                 throw new Error(`Сервер вернул неверный формат данных: ${text.substring(0, 100)}...`);
             }
             
             const result = await response.json();
+            console.log(`API ответ: ${response.status}`, result);
             
             if (!response.ok) {
+                console.error(`API ошибка: ${result.message || 'Неизвестная ошибка'}`);
                 throw new Error(result.message || 'Ошибка запроса');
             }
             
@@ -1208,7 +1213,7 @@ async function loadAdminInvites() {
         if (adminLimitValueAdmin) adminLimitValueAdmin.value = limitsData.global_limits.admin;
         if (supportLimitValueAdmin) supportLimitValueAdmin.value = limitsData.global_limits.support;
         if (userLimitValueAdmin) userLimitValueAdmin.value = limitsData.global_limits.user;
-        
+                
         // Отображение приглашений
         if (invites.length === 0) {
             if (adminInvitesList) adminInvitesList.innerHTML = '<p>Нет приглашений для отображения.</p>';
@@ -1270,7 +1275,7 @@ async function loadAdminInvites() {
                                     await api.deleteInvite(invite.id);
                                     dataCache.clearCache('invites');
                                     loadAdminInvites();
-                                } catch (error) {
+                } catch (error) {
                                     alert(`Ошибка при удалении приглашения: ${error.message}`);
                                 }
                             }
@@ -1325,8 +1330,8 @@ function setupAdminEventHandlers() {
             
             errorElement.style.display = 'none';
             successElement.style.display = 'none';
-            
-            try {
+                
+                try {
                 await api.setInviteLimits(adminLimit, supportLimit, userLimit);
                 dataCache.clearCache('inviteLimits');
                 successElement.style.display = 'block';
@@ -1334,7 +1339,7 @@ function setupAdminEventHandlers() {
                 document.getElementById('admin-limit-value').value = adminLimit;
                 document.getElementById('support-limit-value').value = supportLimit;
                 document.getElementById('user-limit-value').value = userLimit;
-            } catch (error) {
+                } catch (error) {
                 errorElement.textContent = `Ошибка: ${error.message}`;
                 errorElement.style.display = 'block';
             }
@@ -1383,7 +1388,7 @@ function setupAdminEventHandlers() {
                     await api.deleteMultipleInvites(selectedInviteIds);
                     dataCache.clearCache('invites');
                     loadAdminInvites();
-                } catch (error) {
+    } catch (error) {
                     alert(`Ошибка при удалении приглашений: ${error.message}`);
                 }
             }
