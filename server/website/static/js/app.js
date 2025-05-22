@@ -1236,7 +1236,7 @@ async function loadAdminInvites() {
             const tableBody = document.getElementById('admin-invites-table-body');
             if (tableBody) tableBody.innerHTML = '';
             
-            if (tableBody) {
+                        if (tableBody) {
                 pageInvites.forEach(invite => {
                     const row = document.createElement('tr');
                     const status = invite.used ? 'Использован' : 'Активен';
@@ -1249,20 +1249,40 @@ async function loadAdminInvites() {
                     checkbox.dataset.inviteId = invite.id;
                     checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
                     checkboxCell.appendChild(checkbox);
+                    row.appendChild(checkboxCell);
                     
-                    // Добавляем информацию об инвайте
-                    row.innerHTML += `
-                        <td>${invite.code}</td>
-                        <td>${utils.formatDate(invite.created_at)}</td>
-                        <td>${utils.formatDate(invite.expires_at)}</td>
-                        <td>${status}</td>
-                        <td>${invite.created_by.username}</td>
-                        <td>${invite.used_by ? invite.used_by : 'Не использован'}</td>
-                        <td><div class="action-buttons"></div></td>
-                    `;
+                    // Создаем ячейки данных
+                    const codeCell = document.createElement('td');
+                    codeCell.textContent = invite.code;
+                    row.appendChild(codeCell);
+                    
+                    const createdCell = document.createElement('td');
+                    createdCell.textContent = utils.formatDate(invite.created_at);
+                    row.appendChild(createdCell);
+                    
+                    const expiresCell = document.createElement('td');
+                    expiresCell.textContent = utils.formatDate(invite.expires_at);
+                    row.appendChild(expiresCell);
+                    
+                    const statusCell = document.createElement('td');
+                    statusCell.textContent = status;
+                    row.appendChild(statusCell);
+                    
+                    const creatorCell = document.createElement('td');
+                    creatorCell.textContent = invite.created_by.username;
+                    row.appendChild(creatorCell);
+                    
+                    const usedByCell = document.createElement('td');
+                    usedByCell.textContent = invite.used_by ? invite.used_by : 'Не использован';
+                    row.appendChild(usedByCell);
+                    
+                    // Добавляем ячейку действий
+                    const actionsCell = document.createElement('td');
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'action-buttons';
+                    actionsCell.appendChild(actionsDiv);
                     
                     // Добавляем кнопку удаления
-                    const actionsDiv = row.querySelector('.action-buttons');
                     if (!invite.used) {
                         const deleteBtn = document.createElement('button');
                         deleteBtn.className = 'btn btn-danger btn-sm';
@@ -1275,7 +1295,7 @@ async function loadAdminInvites() {
                                     await api.deleteInvite(invite.id);
                                     dataCache.clearCache('invites');
                                     loadAdminInvites();
-                } catch (error) {
+                                } catch (error) {
                                     alert(`Ошибка при удалении приглашения: ${error.message}`);
                                 }
                             }
@@ -1283,7 +1303,7 @@ async function loadAdminInvites() {
                         actionsDiv.appendChild(deleteBtn);
                     }
                     
-                    row.appendChild(checkboxCell);
+                    row.appendChild(actionsCell);
                     tableBody.appendChild(row);
                 });
             }
@@ -1351,12 +1371,20 @@ function setupAdminEventHandlers() {
     if (adminGenerateInviteButton) {
         adminGenerateInviteButton.addEventListener('click', async () => {
             try {
+                adminGenerateInviteButton.disabled = true;
+                adminGenerateInviteButton.textContent = 'Создание...';
+                
                 const result = await api.generateInvite();
+                
                 dataCache.clearCache('invites');
                 alert(`Приглашение создано: ${result.code}`);
                 loadAdminInvites();
             } catch (error) {
+                console.error('Ошибка создания приглашения:', error);
                 alert(`Ошибка при создании приглашения: ${error.message}`);
+            } finally {
+                adminGenerateInviteButton.disabled = false;
+                adminGenerateInviteButton.textContent = 'Создать приглашение';
             }
         });
     }
