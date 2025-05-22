@@ -47,6 +47,12 @@ app = Flask(__name__, static_folder="static")
 CORS(app)
 api = Api(app)
 
+# Подключение базы напрямую для диагностики
+print(f"******* ВНИМАНИЕ: Используемая база данных: {DB_PATH}")
+print(f"******* База данных существует? {os.path.exists(DB_PATH)}")
+if os.path.exists(DB_PATH):
+    print(f"******* Размер БД: {os.path.getsize(DB_PATH)} байт")
+
 # Настройка JWT
 app.config["JWT_SECRET_KEY"] = os.getenv("SECRET_KEY", "your_secret_key")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(days=1)
@@ -148,10 +154,29 @@ class Login(Resource):
         username = data.get("username")
         password = data.get("password")
         
-        db = get_db()
-        user = db.query(User).filter(User.username == username).first()
+        logger.info(f"Попытка входа пользователя: {username}")
+        print(f"******* ОТЛАДКА ВХОДА: Пользователь {username} пытается войти")
         
-        if not user or not pwd_context.verify(password, user.password_hash):
+        db = get_db()
+        # Отладка всех пользователей в базе
+        all_users = db.query(User).all()
+        print(f"******* Все пользователи в системе: {[u.username for u in all_users]}")
+        print(f"******* Количество пользователей: {len(all_users)}")
+        
+        user = db.query(User).filter(User.username == username).first()
+        print(f"******* Найден пользователь {username}? {user is not None}")
+        
+        if not user:
+            logger.warning(f"Пользователь не найден: {username}")
+            print(f"******* Пользователь не найден: {username}")
+            return {"message": "Неверное имя пользователя или пароль"}, 401
+            
+        password_valid = pwd_context.verify(password, user.password_hash)
+        print(f"******* Пароль верный? {password_valid}")
+        print(f"******* Хеш в базе: {user.password_hash}")
+        
+        if not password_valid:
+            logger.warning(f"Неверный пароль для пользователя: {username}")
             return {"message": "Неверное имя пользователя или пароль"}, 401
         
         if user.is_banned:
