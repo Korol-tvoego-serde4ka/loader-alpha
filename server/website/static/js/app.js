@@ -1090,15 +1090,51 @@ async function loadAdminData() {
                 actionsDiv.appendChild(unlinkBtn);
             }
             if (userData && userData.is_admin) {
-                const changePwdBtn = document.createElement('button');
-                changePwdBtn.className = 'btn btn-secondary btn-sm ml-1';
-                changePwdBtn.textContent = 'Сменить пароль';
-                changePwdBtn.title = 'Сменить пароль пользователя';
-                changePwdBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showChangePasswordModal(user.id, user.username);
+                // Кнопки смены ролей
+                const makeAdminBtn = document.createElement('button');
+                makeAdminBtn.className = 'btn btn-primary btn-sm ml-1';
+                makeAdminBtn.textContent = 'A';
+                makeAdminBtn.title = 'Сделать администратором';
+                makeAdminBtn.addEventListener('click', async () => {
+                    try {
+                        await api.setUserRole(user.id, 'admin');
+                        dataCache.clearCache('users');
+                        loadAdminData();
+                    } catch (error) {
+                        alert(`Ошибка при назначении администратора: ${error.message}`);
+                    }
                 });
-                actionsDiv.appendChild(changePwdBtn);
+                actionsDiv.appendChild(makeAdminBtn);
+
+                const makeSupportBtn = document.createElement('button');
+                makeSupportBtn.className = 'btn btn-info btn-sm ml-1';
+                makeSupportBtn.textContent = 'C';
+                makeSupportBtn.title = 'Сделать саппортом';
+                makeSupportBtn.addEventListener('click', async () => {
+                    try {
+                        await api.setUserRole(user.id, 'support');
+                        dataCache.clearCache('users');
+                        loadAdminData();
+                    } catch (error) {
+                        alert(`Ошибка при назначении саппорта: ${error.message}`);
+                    }
+                });
+                actionsDiv.appendChild(makeSupportBtn);
+
+                const makeUserBtn = document.createElement('button');
+                makeUserBtn.className = 'btn btn-secondary btn-sm ml-1';
+                makeUserBtn.textContent = 'Ю';
+                makeUserBtn.title = 'Сделать обычным пользователем';
+                makeUserBtn.addEventListener('click', async () => {
+                    try {
+                        await api.setUserRole(user.id, 'user');
+                        dataCache.clearCache('users');
+                        loadAdminData();
+                    } catch (error) {
+                        alert(`Ошибка при сбросе роли: ${error.message}`);
+                    }
+                });
+                actionsDiv.appendChild(makeUserBtn);
             }
             row.addEventListener('click', function(e) {
                 if (e.target.tagName === 'BUTTON' || e.target.closest('.action-buttons')) return;
