@@ -500,23 +500,33 @@ class InviteList(Resource):
     @jwt_required()
     def get(self):
         try:
+            logger.info("Получен запрос на список приглашений")
             user_id = get_jwt_identity()
             db = get_db()
             
             user = db.query(User).filter(User.id == user_id).first()
             if not user:
+                logger.warning(f"Пользователь с ID {user_id} не найден")
                 return {"message": "Пользователь не найден"}, 404
             
             if user.is_banned:
+                logger.warning(f"Заблокированный пользователь {user.username} пытается получить список приглашений")
                 return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            logger.info(f"Запрос списка приглашений от пользователя {user.username} (ID: {user_id}, admin: {user.is_admin})")
             
             # Для администраторов показываем все инвайты, для остальных - только свои
             if user.is_admin:
                 invites = db.query(Invite).all()
+                logger.info(f"Администратор {user.username} запрашивает все приглашения")
             else:
                 invites = db.query(Invite).filter(Invite.created_by_id == user_id).all()
+                logger.info(f"Пользователь {user.username} запрашивает свои приглашения")
             
-            return {
+            invite_count = len(invites) if invites else 0
+            logger.info(f"Количество найденных приглашений: {invite_count}")
+            
+            result = {
                 "invites": [
                     {
                         "id": invite.id,
@@ -525,10 +535,16 @@ class InviteList(Resource):
                         "expires_at": invite.expires_at.isoformat(),
                         "used": invite.used,
                         "used_by": invite.used_by.username if invite.used_by else None,
-                        "created_by": invite.created_by.username
+                        "created_by": {
+                            "id": invite.created_by.id,
+                            "username": invite.created_by.username
+                        }
                     } for invite in invites
                 ]
             }
+            
+            logger.info(f"Возвращаем список из {invite_count} приглашений")
+            return result
         except Exception as e:
             # Логирование ошибки
             print(f"Ошибка при получении списка приглашений: {str(e)}")

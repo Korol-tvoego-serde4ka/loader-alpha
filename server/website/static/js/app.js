@@ -161,23 +161,21 @@ const api = {
             
             // Проверяем, что ответ - это JSON
             const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                console.error(`Сервер вернул не JSON: ${text.substring(0, 100)}...`);
-                throw new Error(`Сервер вернул неверный формат данных: ${text.substring(0, 100)}...`);
+            if (contentType && contentType.includes('application/json')) {
+                const jsonResponse = await response.json();
+                console.log(`API ответ: ${endpoint}`, jsonResponse);
+                
+                if (!response.ok) {
+                    throw new Error(jsonResponse.message || `HTTP ошибка ${response.status}`);
+                }
+                
+                return jsonResponse;
+            } else {
+                console.error(`API ответ не в формате JSON: ${endpoint}`, await response.text());
+                throw new Error(`Ответ сервера не в формате JSON: ${response.statusText}`);
             }
-            
-            const result = await response.json();
-            console.log(`API ответ: ${response.status}`, result);
-            
-            if (!response.ok) {
-                console.error(`API ошибка: ${result.message || 'Неизвестная ошибка'}`);
-                throw new Error(result.message || 'Ошибка запроса');
-            }
-            
-            return result;
         } catch (error) {
-            console.error('API Error:', error);
+            console.error(`API ошибка: ${endpoint}`, error);
             throw error;
         }
     },
@@ -1189,23 +1187,28 @@ async function loadAdminInvites() {
     if (adminInvitesList) adminInvitesList.style.display = 'none';
     
     try {
+        console.log("Начинаем загрузку приглашений в админке");
+        console.log("API_URL:", API_URL);
         let invitesData, limitsData;
         
-        // Используем кэш, если актуален
-        if (dataCache.isCacheValid('invites')) {
-            invitesData = { invites: dataCache.invites };
-            limitsData = dataCache.inviteLimits;
-        } else {
-            [invitesData, limitsData] = await Promise.all([
-                api.getInvites(),
-                api.getInviteLimits()
-            ]);
-            
-            dataCache.updateCache('invites', invitesData.invites);
-            dataCache.updateCache('inviteLimits', limitsData);
-        }
+        // Очистим кэш для тестирования
+        dataCache.clearCache('invites');
+        dataCache.clearCache('inviteLimits');
+        
+        console.log("Запрашиваем новые данные для приглашений");
+        [invitesData, limitsData] = await Promise.all([
+            api.getInvites(),
+            api.getInviteLimits()
+        ]);
+        
+        console.log("Получены данные приглашений:", invitesData);
+        console.log("Получены данные лимитов:", limitsData);
+        
+        dataCache.updateCache('invites', invitesData.invites);
+        dataCache.updateCache('inviteLimits', limitsData);
         
         const invites = invitesData.invites;
+        console.log(`Количество загруженных приглашений: ${invites ? invites.length : 0}`);
         
         // Копируем значения лимитов в форму в админской вкладке ПриглОчки
         const adminLimitValueAdmin = document.getElementById('admin-limit-value-admin');
@@ -1215,9 +1218,10 @@ async function loadAdminInvites() {
         if (adminLimitValueAdmin) adminLimitValueAdmin.value = limitsData.global_limits.admin;
         if (supportLimitValueAdmin) supportLimitValueAdmin.value = limitsData.global_limits.support;
         if (userLimitValueAdmin) userLimitValueAdmin.value = limitsData.global_limits.user;
-                
+        
         // Отображение приглашений
-        if (invites.length === 0) {
+        if (!invites || invites.length === 0) {
+            console.log("Список приглашений пуст");
             if (adminInvitesList) adminInvitesList.innerHTML = '<p>Нет приглашений для отображения.</p>';
         } else {
             // Фильтрация по поисковому запросу
@@ -1227,19 +1231,25 @@ async function loadAdminInvites() {
             if (searchQuery) {
                 filteredInvites = invites.filter(invite => 
                     invite.code.toLowerCase().includes(searchQuery) || 
-                    invite.created_by.username.toLowerCase().includes(searchQuery) ||
+                    (invite.created_by && invite.created_by.username && invite.created_by.username.toLowerCase().includes(searchQuery)) ||
                     (invite.used_by && invite.used_by.toLowerCase().includes(searchQuery))
                 );
             }
             
+            console.log("Отфильтрованные приглашения:", filteredInvites.length);
+            
             // Получаем данные только для текущей страницы
             const pageInvites = pagination.getPageData('admin-invites', filteredInvites);
+            console.log("Приглашения для текущей страницы:", pageInvites.length);
             
             const tableBody = document.getElementById('admin-invites-table-body');
-            if (tableBody) tableBody.innerHTML = '';
+            console.log("Таблица найдена:", !!tableBody);
             
-                        if (tableBody) {
+            if (tableBody) {
+                tableBody.innerHTML = '';
+                
                 pageInvites.forEach(invite => {
+                    console.log("Обработка приглашения:", invite);
                     const row = document.createElement('tr');
                     const status = invite.used ? 'Использован' : 'Активен';
                     
@@ -1271,7 +1281,7 @@ async function loadAdminInvites() {
                     row.appendChild(statusCell);
                     
                     const creatorCell = document.createElement('td');
-                    creatorCell.textContent = invite.created_by.username;
+                    creatorCell.textContent = invite.created_by && invite.created_by.username ? invite.created_by.username : 'Неизвестно';
                     row.appendChild(creatorCell);
                     
                     const usedByCell = document.createElement('td');
