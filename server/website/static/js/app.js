@@ -492,6 +492,17 @@ const navigation = {
                 if (navLink) {
                     navLink.classList.add('active');
                 }
+            } else if (page === 'profile') {
+                const profilePage = document.getElementById('profile-page');
+                if (profilePage) profilePage.style.display = 'block';
+                const navLink = document.querySelector(`.nav-link[href="#profile"]`);
+                if (navLink) navLink.classList.add('active');
+                // Подгружаем данные пользователя
+                if (userData) {
+                    displayProfileInfo(userData);
+                } else {
+                    api.getUserInfo().then(displayProfileInfo);
+                }
             }
             
             // Прокручиваем страницу вверх
@@ -2788,4 +2799,14 @@ if (newPasswordField) {
     });
 }
 
+// ... existing code ... 
+
+// Функция setupEventHandlers
+const usernameDisplay = document.getElementById('username-display');
+if (usernameDisplay) {
+    usernameDisplay.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigation.navigateTo('profile');
+    });
+}
 // ... existing code ... 
