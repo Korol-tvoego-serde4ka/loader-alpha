@@ -417,19 +417,22 @@ class GenerateInvite(Resource):
     @jwt_required()
     def post(self):
         try:
-            logger.info("Получен запрос на создание приглашения")
+            logger.info("Получен запрос на создание нового приглашения")
             user_id = get_jwt_identity()
             db = get_db()
             
             user = db.query(User).filter(User.id == user_id).first()
             if not user:
+                logger.warning(f"Пользователь с ID {user_id} не найден")
                 return {"message": "Пользователь не найден"}, 404
             
             if user.is_banned:
+                logger.warning(f"Заблокированный пользователь {user.username} пытается создать приглашение")
                 return {"message": "Ваш аккаунт заблокирован"}, 403
             
             # Проверка прав на создание инвайтов
             if not user.can_create_invite():
+                logger.warning(f"У пользователя {user.username} недостаточно прав для создания приглашений")
                 return {"message": "Недостаточно прав для создания инвайтов"}, 403
             
             # Получаем лимиты из базы данных или используем дефолтные значения
@@ -461,6 +464,7 @@ class GenerateInvite(Resource):
             ).count()
             
             if used_invites >= monthly_limit:
+                logger.warning(f"Пользователь {user.username} достиг лимита приглашений ({monthly_limit})")
                 return {"message": f"Достигнут месячный лимит инвайтов ({monthly_limit})"}, 403
             
             # Создание инвайт-кода со сроком действия 30 дней
@@ -477,14 +481,20 @@ class GenerateInvite(Resource):
             
             logger.info(f"Создано новое приглашение с кодом {invite.code} пользователем {user.username}")
             
+            # Возвращаем данные о созданном приглашении
             return {
                 "code": invite.code,
                 "created_at": invite.created_at.isoformat(),
-                "expires_at": invite.expires_at.isoformat()
+                "expires_at": invite.expires_at.isoformat(),
+                "id": invite.id,
+                "created_by": {
+                    "id": user.id, 
+                    "username": user.username
+                }
             }
         except Exception as e:
             # Логирование ошибки
-            print(f"Ошибка при создании приглашения: {str(e)}")
+            logger.error(f"Ошибка при создании приглашения: {str(e)}")
             # Возвращаем ошибку в формате JSON
             return {"message": f"Ошибка при создании приглашения: {str(e)}"}, 500
 

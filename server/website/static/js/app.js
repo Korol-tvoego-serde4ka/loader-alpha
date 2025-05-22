@@ -168,8 +168,8 @@ const api = {
             if (contentType && contentType.includes('application/json')) {
                 const jsonResponse = await response.json();
                 console.log(`API ответ: ${endpoint}`, jsonResponse);
-                
-                if (!response.ok) {
+            
+            if (!response.ok) {
                     throw new Error(jsonResponse.message || `HTTP ошибка ${response.status}`);
                 }
                 
@@ -779,8 +779,8 @@ async function loadInvites() {
         if (adminInviteLimits) adminInviteLimits.style.display = 'none';
         if (deleteSelectedInvitesButton) deleteSelectedInvitesButton.style.display = 'none';
     
-        try {
-            // Загрузка инвайтов и лимитов одновременно
+    try {
+        // Загрузка инвайтов и лимитов одновременно
             let invitesData, limitsData;
             
             if (dataCache.isCacheValid('invites')) {
@@ -789,9 +789,9 @@ async function loadInvites() {
             } else {
                 console.log("Запрашиваем новые данные для приглашений");
                 [invitesData, limitsData] = await Promise.all([
-                    api.getInvites(),
-                    api.getInviteLimits()
-                ]);
+            api.getInvites(),
+            api.getInviteLimits()
+        ]);
                 
                 console.log("Получены данные приглашений:", invitesData);
                 
@@ -808,9 +808,9 @@ async function loadInvites() {
                 dataCache.updateCache('inviteLimits', limitsData);
             }
         
-            const invites = invitesData.invites;
-            
-            // Отображение информации о лимитах
+        const invites = invitesData.invites;
+        
+        // Отображение информации о лимитах
             const monthlyLimit = document.getElementById('monthly-limit');
             const usedInvites = document.getElementById('used-invites');
             const remainingInvites = document.getElementById('remaining-invites');
@@ -820,8 +820,8 @@ async function loadInvites() {
             if (remainingInvites) remainingInvites.textContent = limitsData.remaining_invites;
             if (inviteLimits) inviteLimits.style.display = 'block';
         
-            // Отображение панели управления лимитами для админов
-            if (userData && userData.is_admin) {
+        // Отображение панели управления лимитами для админов
+        if (userData && userData.is_admin) {
                 const adminLimitValue = document.getElementById('admin-limit-value');
                 const supportLimitValue = document.getElementById('support-limit-value');
                 const userLimitValue = document.getElementById('user-limit-value');
@@ -833,15 +833,15 @@ async function loadInvites() {
                 if (adminInviteLimits) adminInviteLimits.style.display = 'block';
                 if (invitesActionsHeader) invitesActionsHeader.style.display = 'table-cell';
                 if (deleteSelectedInvitesButton) deleteSelectedInvitesButton.style.display = 'inline-block';
-            } else {
+        } else {
                 const invitesActionsHeader = document.getElementById('invites-actions-header');
                 if (invitesActionsHeader) invitesActionsHeader.style.display = 'none';
-            }
+        }
         
-            // Проверка, есть ли инвайты для отображения
+        // Проверка, есть ли инвайты для отображения
             if (!invites || invites.length === 0) {
                 if (noInvites) noInvites.style.display = 'block';
-            } else {
+        } else {
                 // Фильтрация по поисковому запросу
                 const searchQuery = document.getElementById('invites-search')?.value?.toLowerCase() || '';
                 let filteredInvites = invites;
@@ -858,24 +858,24 @@ async function loadInvites() {
                 // Получаем данные только для текущей страницы
                 const pageInvites = pagination.getPageData('invites', filteredInvites);
                 
-                const tableBody = document.getElementById('invites-table-body');
+            const tableBody = document.getElementById('invites-table-body');
                 if (tableBody) tableBody.innerHTML = '';
             
                 if (tableBody) {
                     pageInvites.forEach(invite => {
-                        const row = document.createElement('tr');
-                        const status = invite.used ? 'Использован' : 'Активен';
-                        
-                        // Добавляем чекбокс для выбора
-                        const checkboxCell = document.createElement('td');
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.className = 'invite-checkbox';
-                        checkbox.dataset.inviteId = invite.id;
-                        checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
-                        checkboxCell.appendChild(checkbox);
-                        row.appendChild(checkboxCell);
-                        
+                const row = document.createElement('tr');
+                const status = invite.used ? 'Использован' : 'Активен';
+                
+                // Добавляем чекбокс для выбора
+                const checkboxCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'invite-checkbox';
+                checkbox.dataset.inviteId = invite.id;
+                checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+                
                         // Создаем ячейки данных
                         const codeCell = document.createElement('td');
                         codeCell.textContent = invite.code;
@@ -907,35 +907,35 @@ async function loadInvites() {
                         const usedByCell = document.createElement('td');
                         usedByCell.textContent = invite.used_by ? invite.used_by : 'Не использован';
                         row.appendChild(usedByCell);
-                        
-                        // Добавляем кнопку удаления для админов
-                        if (userData && userData.is_admin) {
-                            const actionCell = document.createElement('td');
-                            const deleteButton = document.createElement('button');
-                            deleteButton.className = 'btn btn-danger btn-sm';
-                            deleteButton.textContent = 'Удалить';
-                            deleteButton.addEventListener('click', async () => {
-                                if (confirm('Вы уверены, что хотите удалить этот инвайт?')) {
-                                    try {
+                
+                // Добавляем кнопку удаления для админов
+                if (userData && userData.is_admin) {
+                    const actionCell = document.createElement('td');
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'btn btn-danger btn-sm';
+                    deleteButton.textContent = 'Удалить';
+                    deleteButton.addEventListener('click', async () => {
+                        if (confirm('Вы уверены, что хотите удалить этот инвайт?')) {
+                            try {
                                         deleteButton.disabled = true;
                                         deleteButton.textContent = 'Удаление...';
                                         
-                                        await api.deleteInvite(invite.id);
+                                await api.deleteInvite(invite.id);
                                         dataCache.clearCache('invites'); // Очищаем кэш
-                                        loadInvites(); // Перезагрузка списка после удаления
-                                    } catch (error) {
-                                        alert(`Ошибка при удалении инвайта: ${error.message}`);
+                                loadInvites(); // Перезагрузка списка после удаления
+                            } catch (error) {
+                                alert(`Ошибка при удалении инвайта: ${error.message}`);
                                         deleteButton.disabled = false;
                                         deleteButton.textContent = 'Удалить';
-                                    }
-                                }
-                            });
-                            actionCell.appendChild(deleteButton);
-                            row.appendChild(actionCell);
+                            }
                         }
-                        
-                        tableBody.appendChild(row);
                     });
+                    actionCell.appendChild(deleteButton);
+                    row.appendChild(actionCell);
+                }
+                
+                tableBody.appendChild(row);
+            });
                 }
                 
                 // Добавляем пагинацию
@@ -957,50 +957,50 @@ async function loadInvites() {
                 
                 if (invitesList) invitesList.style.display = 'block';
             
-                // Настройка обработчика для кнопки "Выбрать все"
-                const selectAllCheckbox = document.getElementById('select-all-invites');
+            // Настройка обработчика для кнопки "Выбрать все"
+            const selectAllCheckbox = document.getElementById('select-all-invites');
                 if (selectAllCheckbox) {
-                    selectAllCheckbox.checked = false;
-                    selectAllCheckbox.addEventListener('change', () => {
-                        document.querySelectorAll('.invite-checkbox:not([disabled])').forEach(checkbox => {
-                            checkbox.checked = selectAllCheckbox.checked;
-                        });
-                    });
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.addEventListener('change', () => {
+                document.querySelectorAll('.invite-checkbox:not([disabled])').forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            });
                 }
             
-                // Настройка обработчика для кнопки "Удалить выбранные"
+            // Настройка обработчика для кнопки "Удалить выбранные"
                 const deleteSelectedButton = document.getElementById('delete-selected-invites-button');
                 if (deleteSelectedButton) {
                     deleteSelectedButton.addEventListener('click', async () => {
-                        const selectedInvites = Array.from(document.querySelectorAll('.invite-checkbox:checked'))
-                            .map(checkbox => parseInt(checkbox.dataset.inviteId));
-                        
-                        if (selectedInvites.length === 0) {
-                            alert('Выберите инвайты для удаления');
-                            return;
-                        }
-                        
-                        if (confirm(`Вы уверены, что хотите удалить ${selectedInvites.length} инвайтов?`)) {
-                            try {
+                const selectedInvites = Array.from(document.querySelectorAll('.invite-checkbox:checked'))
+                    .map(checkbox => parseInt(checkbox.dataset.inviteId));
+                
+                if (selectedInvites.length === 0) {
+                    alert('Выберите инвайты для удаления');
+                    return;
+                }
+                
+                if (confirm(`Вы уверены, что хотите удалить ${selectedInvites.length} инвайтов?`)) {
+                    try {
                                 deleteSelectedButton.disabled = true;
                                 deleteSelectedButton.textContent = 'Удаление...';
-                                
-                                await api.deleteMultipleInvites(selectedInvites);
+                        
+                        await api.deleteMultipleInvites(selectedInvites);
                                 dataCache.clearCache('invites'); // Очищаем кэш
-                                loadInvites(); // Перезагрузка списка после удаления
-                            } catch (error) {
-                                alert(`Ошибка при удалении инвайтов: ${error.message}`);
+                        loadInvites(); // Перезагрузка списка после удаления
+                    } catch (error) {
+                        alert(`Ошибка при удалении инвайтов: ${error.message}`);
                                 deleteSelectedButton.disabled = false;
                                 deleteSelectedButton.textContent = 'Удалить выбранные';
-                            }
-                        }
-                    });
+                    }
                 }
-            }
-        } catch (error) {
-            console.error('Ошибка при загрузке инвайтов:', error);
+            });
+                }
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке инвайтов:', error);
             if (invitesList) invitesList.innerHTML = `<p class="text-danger">Ошибка при загрузке приглашений: ${error.message}</p>`;
-        } finally {
+    } finally {
             if (invitesLoading) invitesLoading.style.display = 'none';
         }
     } catch (error) {
@@ -1139,7 +1139,6 @@ async function loadAdminData() {
                 <td><div class="action-buttons"></div></td>
             `;
             const actionsDiv = row.querySelector('.action-buttons');
-            // Удалена тестовая кнопка "Подробнее" по требованию пользователя
             
             // Кнопка бан/разбан
             if (userData && (userData.is_admin || userData.is_support)) {
@@ -1174,6 +1173,19 @@ async function loadAdminData() {
                     });
                     actionsDiv.appendChild(banUserBtn);
                 }
+            }
+            
+            // Добавляем кнопку смены пароля для админов
+            if (userData && userData.is_admin) {
+                const changePasswordBtn = document.createElement('button');
+                changePasswordBtn.className = 'btn btn-info btn-sm ml-1';
+                changePasswordBtn.textContent = 'Пароль';
+                changePasswordBtn.title = 'Сменить пароль пользователя';
+                changePasswordBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showChangePasswordModal(user.id, user.username);
+                });
+                actionsDiv.appendChild(changePasswordBtn);
             }
             
             if (user.discord_linked && userData && userData.is_admin) {
@@ -1245,6 +1257,27 @@ async function loadAdminData() {
                     }
                 });
                 actionsDiv.appendChild(makeUserBtn);
+                
+                // Кнопка удаления пользователя
+                const deleteUserBtn = document.createElement('button');
+                deleteUserBtn.className = 'btn btn-danger btn-sm ml-1';
+                deleteUserBtn.textContent = 'X';
+                deleteUserBtn.title = 'Удалить пользователя';
+                deleteUserBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Вы уверены, что хотите удалить пользователя ${user.username}?`)) {
+                        try {
+                            // Добавим API-метод для удаления пользователя если он будет создан
+                            alert('Функция удаления пользователя пока не реализована');
+                            // await api.deleteUser(user.id);
+                            // dataCache.clearCache('users');
+                            // loadAdminData();
+                        } catch (error) {
+                            alert(`Ошибка при удалении пользователя: ${error.message}`);
+                        }
+                    }
+                });
+                actionsDiv.appendChild(deleteUserBtn);
             }
             row.addEventListener('click', function(e) {
                 if (e.target.tagName === 'BUTTON' || e.target.closest('.action-buttons')) return;
@@ -1537,10 +1570,10 @@ function setupAdminEventHandlers() {
                 button.disabled = true;
                 button.textContent = 'Создание...';
             }
-            
-            try {
+                
+                try {
                 await generateInvite();
-            } catch (error) {
+                } catch (error) {
                 utils.showNotification('danger', `Ошибка создания приглашения: ${error.message}`);
             } finally {
                 if (button) {
@@ -1687,7 +1720,7 @@ async function loadAllKeys() {
         dataCache.clearCache('allKeys');
         
         console.log("Запрашиваем данные всех ключей...");
-        keysData = await api.getAllKeys();
+            keysData = await api.getAllKeys();
         console.log("Получены данные ключей:", keysData);
         
         // Проверяем правильность формата данных
@@ -1808,18 +1841,18 @@ async function loadAllKeys() {
         // Обработчик для выбора всех ключей
         const selectAllCheckbox = document.getElementById('select-all-keys');
         if (selectAllCheckbox) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.addEventListener('change', () => {
-                const isChecked = selectAllCheckbox.checked;
-                document.querySelectorAll('.key-checkbox').forEach(checkbox => {
-                    checkbox.checked = isChecked;
-                });
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.addEventListener('change', () => {
+            const isChecked = selectAllCheckbox.checked;
+            document.querySelectorAll('.key-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
             });
+        });
         }
         
         if (allKeysList) allKeysList.style.display = 'block';
         
-    } catch (error) {
+                } catch (error) {
         console.error('Ошибка при загрузке ключей:', error);
         const allKeysError = document.createElement('div');
         allKeysError.className = 'alert alert-danger';
@@ -2542,22 +2575,22 @@ function setupEventHandlers() {
         if (generateInviteButton) {
             generateInviteButton.addEventListener('click', async () => {
             const button = generateInviteButton;
-            if (button) {
-                button.disabled = true;
-                button.textContent = 'Создание...';
-            }
-            
-            try {
-                await generateInvite();
-            } catch (error) {
-                utils.showNotification('danger', `Ошибка создания приглашения: ${error.message}`);
-            } finally {
                 if (button) {
-                    button.disabled = false;
-                    button.textContent = 'Создать приглашение';
+        button.disabled = true;
+        button.textContent = 'Создание...';
                 }
-            }
-        });
+        
+        try {
+                await generateInvite();
+        } catch (error) {
+                utils.showNotification('danger', `Ошибка создания приглашения: ${error.message}`);
+        } finally {
+                    if (button) {
+            button.disabled = false;
+            button.textContent = 'Создать приглашение';
+                    }
+        }
+    });
         }
     
     // Форма установки лимитов приглашений
