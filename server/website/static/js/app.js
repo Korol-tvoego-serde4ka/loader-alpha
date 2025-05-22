@@ -1,5 +1,12 @@
 "use strict";
 
+// Проверка наличия глобальной переменной API_URL
+if (typeof API_URL === 'undefined') {
+    console.error('API_URL не определен. Проверьте подключение config.js');
+    // Fallback значение
+    window.API_URL = '/api';
+}
+
 // Глобальные переменные
 let token = localStorage.getItem('token');
 let userData = null;
