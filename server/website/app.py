@@ -253,114 +253,106 @@ class KeyResource(Resource):
 class GenerateKey(Resource):
     @jwt_required()
     def post(self):
-        user_id = get_jwt_identity()
-        data = request.get_json()
-        duration_hours = data.get("duration_hours", 24)
-        target_user_id = data.get("user_id")
-        custom_key = data.get("custom_key")  # Пользовательское значение ключа
-        
-        db = get_db()
-        
-        # Проверка, что пользователь является администратором
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user.is_admin and not user.is_support:
-            return {"message": "Недостаточно прав для генерации ключа"}, 403
-        
-        if user.is_banned:
-            return {"message": "Ваш аккаунт заблокирован"}, 403
-        
-        # Если указан пользователь, проверяем его существование
-        if target_user_id:
-            target_user = db.query(User).filter(User.id == target_user_id).first()
-            if not target_user:
-                return {"message": "Пользователь не найден"}, 404
-        
-        # Создание нового ключа
-        key_expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
-        
-        if custom_key:
-            # Проверяем, не существует ли уже такой ключ
-            existing_key = db.query(Key).filter(Key.key == custom_key).first()
-            if existing_key:
-                return {"message": "Ключ с таким значением уже существует"}, 400
+        try:
+            user_id = get_jwt_identity()
+            data = request.get_json()
+            duration_hours = data.get("duration_hours", 24)
+            target_user_id = data.get("user_id")
+            custom_key = data.get("custom_key")  # Пользовательское значение ключа
+            
+            db = get_db()
+            
+            # Проверка, что пользователь является администратором
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user.is_admin and not user.is_support:
+                return {"message": "Недостаточно прав для генерации ключа"}, 403
+            
+            if user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
+            
+            # Если указан пользователь, проверяем его существование
+            if target_user_id:
+                target_user = db.query(User).filter(User.id == target_user_id).first()
+                if not target_user:
+                    return {"message": "Пользователь не найден"}, 404
+            
+            # Создание нового ключа с использованием метода create_custom_key
+            try:
+                new_key = Key.create_custom_key(
+                    db=db,
+                    duration_hours=duration_hours,
+                    user_id=target_user_id,
+                    custom_key=custom_key
+                )
                 
-            # Создание пользовательского ключа
-            new_key = Key(
-                key=custom_key,
-                user_id=target_user_id,
-                expires_at=key_expiry
-            )
-        else:
-            # Создание случайного ключа
-            new_key = Key(
-                user_id=target_user_id,
-                expires_at=key_expiry
-            )
+                return {
+                    "key": new_key.key,
+                    "created_at": new_key.created_at.isoformat(),
+                    "expires_at": new_key.expires_at.isoformat()
+                }
+            except ValueError as e:
+                return {"message": str(e)}, 400
         
-        db.add(new_key)
-        db.commit()
-        db.refresh(new_key)
-        
-        return {
-            "key": new_key.key,
-            "created_at": new_key.created_at.isoformat(),
-            "expires_at": new_key.expires_at.isoformat()
-        }
+        except Exception as e:
+            print(f"Ошибка при генерации ключа: {str(e)}")
+            return {"message": f"Ошибка при генерации ключа: {str(e)}"}, 500
 
 class RedeemKey(Resource):
     @jwt_required()
     def post(self):
-        user_id = get_jwt_identity()
-        data = request.get_json()
-        key_string = data.get("key")
-        
-        db = get_db()
-        
-        user = db.query(User).filter(User.id == user_id).first()
-        if user.is_banned:
-            return {"message": "Ваш аккаунт заблокирован"}, 403
-        
-        # Поиск ключа
-        key = db.query(Key).filter(Key.key == key_string).first()
-        if not key:
-            return {"message": "Ключ не найден"}, 404
-        
-        # Проверка, что ключ не истёк и активен
-        if key.is_expired():
-            return {"message": "Ключ истёк"}, 400
-        
-        if not key.is_active:
-            return {"message": "Ключ неактивен"}, 400
-        
-        # Проверка, что ключ свободен или уже принадлежит пользователю
-        if key.user_id is not None and key.user_id != user_id:
-            return {"message": "Ключ уже занят другим пользователем"}, 400
-        
-        # Привязка ключа к пользователю, если он ещё не привязан
-        if key.user_id is None:
-            key.user_id = user_id
-            key.activated_at = datetime.datetime.utcnow()
+        try:
+            user_id = get_jwt_identity()
+            data = request.get_json()
+            key_string = data.get("key")
             
-            # Вычисляем разницу между созданием и истечением ключа (в секундах)
-            original_duration = (key.expires_at - key.created_at).total_seconds()
+            db = get_db()
             
-            # Устанавливаем новую дату истечения от текущего момента
-            key.expires_at = key.activated_at + datetime.timedelta(seconds=original_duration)
+            user = db.query(User).filter(User.id == user_id).first()
+            if user.is_banned:
+                return {"message": "Ваш аккаунт заблокирован"}, 403
             
-            db.commit()
-            db.refresh(key)
-        
-        return {
-            "success": True,
-            "key": {
-                "id": key.id,
-                "key": key.key,
-                "created_at": key.created_at.isoformat(),
-                "expires_at": key.expires_at.isoformat(),
-                "is_active": key.is_active,
-                "time_left": key.time_left()
+            # Поиск ключа
+            key = db.query(Key).filter(Key.key == key_string).first()
+            if not key:
+                return {"message": "Ключ не найден"}, 404
+            
+            # Проверка, что ключ не истёк и активен
+            if key.is_expired():
+                return {"message": "Ключ истёк"}, 400
+            
+            if not key.is_active:
+                return {"message": "Ключ неактивен"}, 400
+            
+            # Проверка, что ключ свободен или уже принадлежит пользователю
+            if key.user_id is not None and key.user_id != user_id:
+                return {"message": "Ключ уже занят другим пользователем"}, 400
+            
+            # Привязка ключа к пользователю, если он ещё не привязан
+            if key.user_id is None:
+                key.user_id = user_id
+                key.activated_at = datetime.datetime.utcnow()
+                
+                # Вычисляем новую дату истечения (текущее время + оставшаяся продолжительность)
+                time_left = key.time_left()
+                key.expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=time_left)
+                
+                db.commit()
+                db.refresh(key)
+            
+            return {
+                "success": True,
+                "key": {
+                    "id": key.id,
+                    "key": key.key,
+                    "created_at": key.created_at.isoformat(),
+                    "expires_at": key.expires_at.isoformat(),
+                    "is_active": key.is_active,
+                    "time_left": key.time_left()
+                }
             }
-        }
+        except Exception as e:
+            print(f"Ошибка при активации ключа: {str(e)}")
+            return {"message": f"Ошибка при активации ключа: {str(e)}"}, 500
 
 class VerifyKey(Resource):
     def post(self):

@@ -1607,22 +1607,37 @@ function addRoleManagementButtons() {
 
 // Загрузка всех ключей (для админов)
 async function loadAllKeys() {
-    document.getElementById('all-keys-loading').style.display = 'block';
-    document.getElementById('all-keys-list').style.display = 'none';
+    const allKeysLoading = document.getElementById('all-keys-loading');
+    const allKeysList = document.getElementById('all-keys-list');
+    
+    if (allKeysLoading) allKeysLoading.style.display = 'block';
+    if (allKeysList) allKeysList.style.display = 'none';
     
     try {
         let keysData;
         
-        // Используем кэш, если он актуален
-        if (dataCache.isCacheValid('allKeys')) {
-            keysData = { keys: dataCache.allKeys };
-        } else {
-            keysData = await api.getAllKeys();
-            dataCache.updateCache('allKeys', keysData.keys);
+        // Очищаем кэш для гарантии актуальности данных
+        dataCache.clearCache('allKeys');
+        
+        console.log("Запрашиваем данные всех ключей...");
+        keysData = await api.getAllKeys();
+        console.log("Получены данные ключей:", keysData);
+        
+        // Проверяем правильность формата данных
+        if (!keysData || !keysData.keys) {
+            console.error("Получены некорректные данные:", keysData);
+            throw new Error("Неверный формат данных от API");
         }
+        
+        dataCache.updateCache('allKeys', keysData.keys);
         
         const keys = keysData.keys;
         const tableBody = document.getElementById('all-keys-table-body');
+        if (!tableBody) {
+            console.error("Не найден элемент таблицы all-keys-table-body");
+            throw new Error("Элемент таблицы не найден");
+        }
+        
         tableBody.innerHTML = '';
         
         // Фильтрация по поисковому запросу
@@ -1725,107 +1740,31 @@ async function loadAllKeys() {
         
         // Обработчик для выбора всех ключей
         const selectAllCheckbox = document.getElementById('select-all-keys');
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.addEventListener('change', () => {
-            const isChecked = selectAllCheckbox.checked;
-            document.querySelectorAll('.key-checkbox').forEach(checkbox => {
-                checkbox.checked = isChecked;
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.addEventListener('change', () => {
+                const isChecked = selectAllCheckbox.checked;
+                document.querySelectorAll('.key-checkbox').forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
             });
-        });
+        }
         
-        // Обработчики для кнопок массовых операций
-        document.getElementById('revoke-selected-keys-button').addEventListener('click', async () => {
-            const selectedKeyIds = getSelectedKeyIds();
-            if (selectedKeyIds.length === 0) {
-                alert('Выберите ключи для отзыва');
-                return;
-            }
-            
-            if (confirm(`Вы уверены, что хотите отозвать ${selectedKeyIds.length} ключ(ей)?`)) {
-                try {
-                    const button = document.getElementById('revoke-selected-keys-button');
-                    button.disabled = true;
-                    const originalText = button.textContent;
-                    button.textContent = 'Отзыв...';
-                    
-                    await api.bulkKeyAction(selectedKeyIds, 'revoke');
-                    dataCache.clearCache('allKeys'); // Очищаем кэш
-                    loadAllKeys();
-                    
-                    button.disabled = false;
-                    button.textContent = originalText;
-                } catch (error) {
-                    alert(`Ошибка при массовом отзыве ключей: ${error.message}`);
-                    const button = document.getElementById('revoke-selected-keys-button');
-                    button.disabled = false;
-                    button.textContent = 'Отозвать выбранные';
-                }
-            }
-        });
+        if (allKeysList) allKeysList.style.display = 'block';
         
-        document.getElementById('restore-selected-keys-button').addEventListener('click', async () => {
-            const selectedKeyIds = getSelectedKeyIds();
-            if (selectedKeyIds.length === 0) {
-                alert('Выберите ключи для восстановления');
-                return;
-            }
-            
-            if (confirm(`Вы уверены, что хотите восстановить ${selectedKeyIds.length} ключ(ей)?`)) {
-                try {
-                    const button = document.getElementById('restore-selected-keys-button');
-                    button.disabled = true;
-                    const originalText = button.textContent;
-                    button.textContent = 'Восстановление...';
-                    
-                    await api.bulkKeyAction(selectedKeyIds, 'restore');
-                    dataCache.clearCache('allKeys'); // Очищаем кэш
-                    loadAllKeys();
-                    
-                    button.disabled = false;
-                    button.textContent = originalText;
-                } catch (error) {
-                    alert(`Ошибка при массовом восстановлении ключей: ${error.message}`);
-                    const button = document.getElementById('restore-selected-keys-button');
-                    button.disabled = false;
-                    button.textContent = 'Восстановить выбранные';
-                }
-            }
-        });
-        
-        document.getElementById('delete-selected-keys-button').addEventListener('click', async () => {
-            const selectedKeyIds = getSelectedKeyIds();
-            if (selectedKeyIds.length === 0) {
-                alert('Выберите ключи для удаления');
-                return;
-            }
-            
-            if (confirm(`Вы уверены, что хотите удалить ${selectedKeyIds.length} ключ(ей)? Это действие необратимо!`)) {
-                try {
-                    const button = document.getElementById('delete-selected-keys-button');
-                    button.disabled = true;
-                    const originalText = button.textContent;
-                    button.textContent = 'Удаление...';
-                    
-                    await api.bulkKeyAction(selectedKeyIds, 'delete');
-                    dataCache.clearCache('allKeys'); // Очищаем кэш
-                    loadAllKeys();
-                    
-                    button.disabled = false;
-                    button.textContent = originalText;
-                } catch (error) {
-                    alert(`Ошибка при массовом удалении ключей: ${error.message}`);
-                    const button = document.getElementById('delete-selected-keys-button');
-                    button.disabled = false;
-                    button.textContent = 'Удалить выбранные';
-                }
-            }
-        });
-        
-        document.getElementById('all-keys-list').style.display = 'block';
     } catch (error) {
         console.error('Ошибка при загрузке ключей:', error);
+        const allKeysError = document.createElement('div');
+        allKeysError.className = 'alert alert-danger';
+        allKeysError.textContent = `Ошибка при загрузке ключей: ${error.message}`;
+        
+        if (allKeysList) {
+            allKeysList.innerHTML = '';
+            allKeysList.appendChild(allKeysError);
+            allKeysList.style.display = 'block';
+        }
     } finally {
-        document.getElementById('all-keys-loading').style.display = 'none';
+        if (allKeysLoading) allKeysLoading.style.display = 'none';
     }
 }
 

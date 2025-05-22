@@ -98,51 +98,48 @@ class Key(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     activated_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=False)  # Явный столбец для даты истечения
     duration = Column(Integer, nullable=False, default=86400)  # Длительность в секундах (по умолчанию 1 день)
     is_active = Column(Boolean, default=True)  # Активен ли ключ (можно отозвать)
     
     # Отношения
     user = relationship("User", back_populates="keys")
     
-    @property
-    def expires_at(self):
-        """Возвращает дату/время истечения ключа"""
-        if not self.activated_at:
-            # Если ключ не активирован, возвращаем дату создания + продолжительность
-            return self.created_at + datetime.timedelta(seconds=self.duration)
-        return self.activated_at + datetime.timedelta(seconds=self.duration)
+    def __init__(self, **kwargs):
+        super(Key, self).__init__(**kwargs)
+        # Если expires_at не указан явно, вычисляем его
+        if 'expires_at' not in kwargs:
+            self.expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.duration)
     
     def is_expired(self):
         """Проверяет, истек ли ключ"""
-        # Если ключ не активирован, он не истекает
-        if not self.activated_at:
-            return False
         return datetime.datetime.utcnow() > self.expires_at
     
-    @property
     def time_left(self):
         """Возвращает оставшееся время действия ключа в секундах"""
         if not self.is_active:
             return 0
-        
-        # Если ключ не активирован, возвращаем полную продолжительность
-        if not self.activated_at:
-            return self.duration
             
         if self.is_expired():
             return 0
         
         remaining = (self.expires_at - datetime.datetime.utcnow()).total_seconds()
         return max(0, int(remaining))
+    
+    def duration_hours(self):
+        """Возвращает продолжительность действия ключа в часах"""
+        return self.duration // 3600
 
     @classmethod
     def create_custom_key(cls, db, duration_hours=24, user_id=None, custom_key=None):
         """Создает ключ с заданными параметрами"""
         duration_seconds = duration_hours * 3600
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=duration_seconds)
         
         key = Key(
             user_id=user_id,
-            duration=duration_seconds
+            duration=duration_seconds,
+            expires_at=expires_at
         )
         
         if custom_key:
