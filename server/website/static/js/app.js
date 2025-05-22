@@ -576,7 +576,8 @@ const auth = {
             const discordNav = document.getElementById('discord-nav');
             
             if (keysNav) keysNav.style.display = 'block';
-            if (invitesNav) invitesNav.style.display = 'block';
+            // Скрываем вкладку приглашений, так как она интегрирована в АдминОчку
+            if (invitesNav) invitesNav.style.display = userData.is_admin || userData.is_support ? 'none' : 'block';
             if (discordNav) discordNav.style.display = 'block';
             
             // Отображение админ-панели для админов и саппорта
@@ -1027,6 +1028,7 @@ async function loadAdminData() {
             `;
             const actionsDiv = row.querySelector('.action-buttons');
             // Удалена тестовая кнопка "Подробнее" по требованию пользователя
+            
             // Кнопка бан/разбан
             if (userData && (userData.is_admin || userData.is_support)) {
                 if (user.is_banned) {
@@ -1061,6 +1063,7 @@ async function loadAdminData() {
                     actionsDiv.appendChild(banUserBtn);
                 }
             }
+            
             if (user.discord_linked && userData && userData.is_admin) {
                 const unlinkBtn = document.createElement('button');
                 unlinkBtn.className = 'btn btn-warning btn-sm ml-1';
@@ -1156,62 +1159,258 @@ async function loadAdminData() {
             });
         }
         
-        // Обработчики событий для кнопок бана/разбана
-        document.querySelectorAll('.ban-user').forEach(button => {
-            button.addEventListener('click', async () => {
-                const userId = button.getAttribute('data-id');
-                
-                // Добавляем индикатор загрузки
-                button.disabled = true;
-                const originalText = button.textContent;
-                button.textContent = 'Блокировка...';
-                
-                try {
-                    await api.banUser(userId);
-                    dataCache.clearCache('users'); // Очищаем кэш
-                    loadAdminData();
-                } catch (error) {
-                    alert(`Ошибка блокировки пользователя: ${error.message}`);
-                    button.disabled = false;
-                    button.textContent = originalText;
-                }
-            });
-        });
-        
-        document.querySelectorAll('.unban-user').forEach(button => {
-            button.addEventListener('click', async () => {
-                const userId = button.getAttribute('data-id');
-                
-                // Добавляем индикатор загрузки
-                button.disabled = true;
-                const originalText = button.textContent;
-                button.textContent = 'Разблокировка...';
-                
-                try {
-                    await api.unbanUser(userId);
-                    dataCache.clearCache('users'); // Очищаем кэш
-                    loadAdminData();
-                } catch (error) {
-                    alert(`Ошибка разблокировки пользователя: ${error.message}`);
-                    button.disabled = false;
-                    button.textContent = originalText;
-                }
-            });
-        });
-        
-        // Добавляем кнопки управления ролями
-        addRoleManagementButtons();
-        
+        document.getElementById('users-loading').style.display = 'none';
         document.getElementById('users-list').style.display = 'block';
         
-        // Обработчики переключения вкладок
-        document.querySelector('#all-keys-tab').addEventListener('click', loadAllKeys);
+        // Загрузка приглашений в админке
+        loadAdminInvites();
         
+        // Загрузка всех ключей
+        loadAllKeys();
     } catch (error) {
         console.error('Ошибка при загрузке списка пользователей:', error);
-    } finally {
         document.getElementById('users-loading').style.display = 'none';
     }
+}
+
+// Загрузка приглашений в админке
+async function loadAdminInvites() {
+    const adminInvitesLoading = document.getElementById('admin-invites-loading');
+    const adminInvitesList = document.getElementById('admin-invites-list');
+    
+    if (adminInvitesLoading) adminInvitesLoading.style.display = 'block';
+    if (adminInvitesList) adminInvitesList.style.display = 'none';
+    
+    try {
+        let invitesData, limitsData;
+        
+        // Используем кэш, если актуален
+        if (dataCache.isCacheValid('invites')) {
+            invitesData = { invites: dataCache.invites };
+            limitsData = dataCache.inviteLimits;
+        } else {
+            [invitesData, limitsData] = await Promise.all([
+                api.getInvites(),
+                api.getInviteLimits()
+            ]);
+            
+            dataCache.updateCache('invites', invitesData.invites);
+            dataCache.updateCache('inviteLimits', limitsData);
+        }
+        
+        const invites = invitesData.invites;
+        
+        // Копируем значения лимитов в форму в админской вкладке ПриглОчки
+        const adminLimitValueAdmin = document.getElementById('admin-limit-value-admin');
+        const supportLimitValueAdmin = document.getElementById('support-limit-value-admin');
+        const userLimitValueAdmin = document.getElementById('user-limit-value-admin');
+        
+        if (adminLimitValueAdmin) adminLimitValueAdmin.value = limitsData.global_limits.admin;
+        if (supportLimitValueAdmin) supportLimitValueAdmin.value = limitsData.global_limits.support;
+        if (userLimitValueAdmin) userLimitValueAdmin.value = limitsData.global_limits.user;
+        
+        // Отображение приглашений
+        if (invites.length === 0) {
+            if (adminInvitesList) adminInvitesList.innerHTML = '<p>Нет приглашений для отображения.</p>';
+        } else {
+            // Фильтрация по поисковому запросу
+            const searchQuery = document.getElementById('admin-invites-search')?.value?.toLowerCase() || '';
+            let filteredInvites = invites;
+            
+            if (searchQuery) {
+                filteredInvites = invites.filter(invite => 
+                    invite.code.toLowerCase().includes(searchQuery) || 
+                    invite.created_by.username.toLowerCase().includes(searchQuery) ||
+                    (invite.used_by && invite.used_by.toLowerCase().includes(searchQuery))
+                );
+            }
+            
+            // Получаем данные только для текущей страницы
+            const pageInvites = pagination.getPageData('admin-invites', filteredInvites);
+            
+            const tableBody = document.getElementById('admin-invites-table-body');
+            if (tableBody) tableBody.innerHTML = '';
+            
+            if (tableBody) {
+                pageInvites.forEach(invite => {
+                    const row = document.createElement('tr');
+                    const status = invite.used ? 'Использован' : 'Активен';
+                    
+                    // Добавляем чекбокс для выбора
+                    const checkboxCell = document.createElement('td');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'admin-invite-checkbox';
+                    checkbox.dataset.inviteId = invite.id;
+                    checkbox.disabled = invite.used; // Нельзя выбрать использованные инвайты
+                    checkboxCell.appendChild(checkbox);
+                    
+                    // Добавляем информацию об инвайте
+                    row.innerHTML += `
+                        <td>${invite.code}</td>
+                        <td>${utils.formatDate(invite.created_at)}</td>
+                        <td>${utils.formatDate(invite.expires_at)}</td>
+                        <td>${status}</td>
+                        <td>${invite.created_by.username}</td>
+                        <td>${invite.used_by ? invite.used_by : 'Не использован'}</td>
+                        <td><div class="action-buttons"></div></td>
+                    `;
+                    
+                    // Добавляем кнопку удаления
+                    const actionsDiv = row.querySelector('.action-buttons');
+                    if (!invite.used) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'btn btn-danger btn-sm';
+                        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                        deleteBtn.title = 'Удалить приглашение';
+                        deleteBtn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            if (confirm('Вы уверены, что хотите удалить это приглашение?')) {
+                                try {
+                                    await api.deleteInvite(invite.id);
+                                    dataCache.clearCache('invites');
+                                    loadAdminInvites();
+                                } catch (error) {
+                                    alert(`Ошибка при удалении приглашения: ${error.message}`);
+                                }
+                            }
+                        });
+                        actionsDiv.appendChild(deleteBtn);
+                    }
+                    
+                    row.appendChild(checkboxCell);
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // Добавляем пагинацию
+            const paginationContainer = document.getElementById('admin-invites-pagination');
+            if (paginationContainer) {
+                paginationContainer.innerHTML = pagination.generatePaginationHTML('admin-invites', filteredInvites.length);
+                
+                // Добавляем обработчики для кнопок пагинации
+                document.querySelectorAll('.pagination-link[data-type="admin-invites"]').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const type = this.getAttribute('data-type');
+                        const page = parseInt(this.getAttribute('data-page'));
+                        pagination.goToPage(type, page);
+                        loadAdminInvites(); // Перезагружаем с новой страницей
+                    });
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке приглашений в админке:', error);
+    } finally {
+        if (adminInvitesLoading) adminInvitesLoading.style.display = 'none';
+        if (adminInvitesList) adminInvitesList.style.display = 'block';
+    }
+}
+
+// Функция для настройки обработчиков событий в админ-панели
+function setupAdminEventHandlers() {
+    // Добавляем обработчик для формы управления лимитами приглашений в админке
+    const setInviteLimitsFormAdmin = document.getElementById('set-invite-limits-form-admin');
+    if (setInviteLimitsFormAdmin) {
+        setInviteLimitsFormAdmin.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const adminLimit = document.getElementById('admin-limit-value-admin').value;
+            const supportLimit = document.getElementById('support-limit-value-admin').value;
+            const userLimit = document.getElementById('user-limit-value-admin').value;
+            
+            const errorElement = document.getElementById('set-limits-error-admin');
+            const successElement = document.getElementById('set-limits-success-admin');
+            
+            errorElement.style.display = 'none';
+            successElement.style.display = 'none';
+            
+            try {
+                await api.setInviteLimits(adminLimit, supportLimit, userLimit);
+                dataCache.clearCache('inviteLimits');
+                successElement.style.display = 'block';
+                // Обновляем также данные в обычной вкладке приглашений
+                document.getElementById('admin-limit-value').value = adminLimit;
+                document.getElementById('support-limit-value').value = supportLimit;
+                document.getElementById('user-limit-value').value = userLimit;
+            } catch (error) {
+                errorElement.textContent = `Ошибка: ${error.message}`;
+                errorElement.style.display = 'block';
+            }
+        });
+    }
+    
+    // Обработчик для кнопки создания приглашения в админке
+    const adminGenerateInviteButton = document.getElementById('admin-generate-invite-button');
+    if (adminGenerateInviteButton) {
+        adminGenerateInviteButton.addEventListener('click', async () => {
+            try {
+                const result = await api.generateInvite();
+                dataCache.clearCache('invites');
+                alert(`Приглашение создано: ${result.code}`);
+                loadAdminInvites();
+            } catch (error) {
+                alert(`Ошибка при создании приглашения: ${error.message}`);
+            }
+        });
+    }
+    
+    // Обработчик для выбора всех приглашений в админке
+    const selectAllAdminInvites = document.getElementById('select-all-admin-invites');
+    if (selectAllAdminInvites) {
+        selectAllAdminInvites.addEventListener('change', () => {
+            const checkboxes = document.querySelectorAll('.admin-invite-checkbox:not(:disabled)');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllAdminInvites.checked;
+            });
+        });
+    }
+    
+    // Обработчик для удаления выбранных приглашений в админке
+    const adminDeleteSelectedInvitesButton = document.getElementById('admin-delete-selected-invites-button');
+    if (adminDeleteSelectedInvitesButton) {
+        adminDeleteSelectedInvitesButton.addEventListener('click', async () => {
+            const selectedInviteIds = getSelectedAdminInviteIds();
+            
+            if (selectedInviteIds.length === 0) {
+                alert('Выберите приглашения для удаления');
+                return;
+            }
+            
+            if (confirm(`Вы уверены, что хотите удалить ${selectedInviteIds.length} приглашений?`)) {
+                try {
+                    await api.deleteMultipleInvites(selectedInviteIds);
+                    dataCache.clearCache('invites');
+                    loadAdminInvites();
+                } catch (error) {
+                    alert(`Ошибка при удалении приглашений: ${error.message}`);
+                }
+            }
+        });
+    }
+    
+    // Обработчик поиска приглашений в админке
+    const adminInvitesSearch = document.getElementById('admin-invites-search');
+    if (adminInvitesSearch) {
+        adminInvitesSearch.addEventListener('input', debounce(() => {
+            loadAdminInvites();
+        }, 300));
+    }
+    
+    // Обработчик экспорта списка приглашений в админке
+    const exportAdminInvitesBtn = document.getElementById('export-admin-invites-btn');
+    if (exportAdminInvitesBtn) {
+        exportAdminInvitesBtn.addEventListener('click', () => {
+            exportTableToCSV('admin-invites-table', 'Приглашения.csv');
+        });
+    }
+}
+
+// Функция для получения ID выбранных приглашений в админке
+function getSelectedAdminInviteIds() {
+    const checkboxes = document.querySelectorAll('.admin-invite-checkbox:checked');
+    return Array.from(checkboxes).map(checkbox => checkbox.dataset.inviteId);
 }
 
 // Добавляем функции для управления ролями пользователей
@@ -2250,9 +2449,19 @@ function setupEventHandlers() {
                     if (setLimitsSuccess) setLimitsSuccess.style.display = 'block';
             
             // Перезагрузка данных
+            dataCache.clearCache('inviteLimits');
             setTimeout(() => {
                 loadInvites();
             }, 2000);
+            
+            // Синхронизируем значения с формой в административной панели
+            const adminLimitAdmin = document.getElementById('admin-limit-value-admin');
+            const supportLimitAdmin = document.getElementById('support-limit-value-admin');
+            const userLimitAdmin = document.getElementById('user-limit-value-admin');
+            
+            if (adminLimitAdmin) adminLimitAdmin.value = adminLimit;
+            if (supportLimitAdmin) supportLimitAdmin.value = supportLimit;
+            if (userLimitAdmin) userLimitAdmin.value = userLimit;
         } catch (error) {
                     if (setLimitsError) {
                         setLimitsError.textContent = error.message;
@@ -3005,3 +3214,26 @@ function showChangePasswordModal(userId, username) {
         }
     };
 }
+
+// Обработчики переключения вкладок администратора
+document.querySelector('#all-keys-tab')?.addEventListener('click', loadAllKeys);
+document.querySelector('#invites-admin-tab')?.addEventListener('click', () => {
+    // Загружаем данные приглашений при открытии вкладки ПриглОчки
+    loadAdminInvites();
+    
+    // Синхронизируем значения лимитов из основной формы, если они уже заполнены
+    if (dataCache.inviteLimits) {
+        const adminLimitAdmin = document.getElementById('admin-limit-value-admin');
+        const supportLimitAdmin = document.getElementById('support-limit-value-admin');
+        const userLimitAdmin = document.getElementById('user-limit-value-admin');
+        
+        if (adminLimitAdmin) adminLimitAdmin.value = dataCache.inviteLimits.global_limits.admin;
+        if (supportLimitAdmin) supportLimitAdmin.value = dataCache.inviteLimits.global_limits.support;
+        if (userLimitAdmin) userLimitAdmin.value = dataCache.inviteLimits.global_limits.user;
+    }
+});
+
+// Настройка обработчиков административных функций
+setupAdminEventHandlers();
+
+// Обработчик поиска ключей
