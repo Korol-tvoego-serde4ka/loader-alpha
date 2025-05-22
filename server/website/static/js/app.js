@@ -2910,10 +2910,8 @@ if (usernameDisplay) {
 
 // ... existing code ...
 row.addEventListener('click', function(e) {
-    if (e.target.tagName === 'BUTTON') return;
-    // Скрыть действия у всех строк
+    if (e.target.tagName === 'BUTTON' || e.target.closest('.action-buttons')) return;
     document.querySelectorAll('#users-table tbody tr').forEach(r => r.classList.remove('active-row'));
-    // Показать только у текущей
     row.classList.toggle('active-row');
 });
 // ... existing code ...
