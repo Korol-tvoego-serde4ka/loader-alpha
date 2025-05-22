@@ -7,6 +7,10 @@ from passlib.context import CryptContext
 parent_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(parent_dir)
 
+# Установка пути к базе данных
+os.environ["DATABASE_URL"] = f"sqlite:////{os.path.join(parent_dir, 'database.db')}"
+print(f"Используем базу данных: {os.environ['DATABASE_URL']}")
+
 # Импорт моделей и сессии
 from database.models import User, SessionLocal, Base, engine
 
