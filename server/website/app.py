@@ -25,7 +25,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Добавление пути к корню проекта
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+print(f"Путь к родительской директории добавлен в sys.path: {parent_dir}")
+
+# Импортируем модели из родительской директории с абсолютным путем к БД
+os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(parent_dir, 'database.db')}"
+print(f"Установлен DATABASE_URL: {os.environ['DATABASE_URL']}")
 
 from database.models import SessionLocal, User, Key, Invite, DiscordCode, RoleLimits, Base, engine
 
@@ -521,12 +527,18 @@ class InviteList(Resource):
             if user.is_admin:
                 invites = db.query(Invite).all()
                 logger.info(f"Администратор {user.username} запрашивает все приглашения")
+                print(f"ОТЛАДКА: Запрошены все приглашения из БД, количество: {len(invites) if invites else 0}")
+                print(f"ОТЛАДКА: Используемая БД: {db}")
             else:
                 invites = db.query(Invite).filter(Invite.created_by_id == user_id).all()
                 logger.info(f"Пользователь {user.username} запрашивает свои приглашения")
             
             invite_count = len(invites) if invites else 0
             logger.info(f"Количество найденных приглашений: {invite_count}")
+            print(f"ОТЛАДКА: Количество найденных приглашений: {invite_count}")
+            
+            if invite_count > 0:
+                print(f"ОТЛАДКА: Пример первого приглашения: ID={invites[0].id}, Код={invites[0].code}")
             
             result = {
                 "invites": [
@@ -545,6 +557,7 @@ class InviteList(Resource):
                 ]
             }
             
+            print(f"ОТЛАДКА: Результат API: {result}")
             logger.info(f"Возвращаем список из {invite_count} приглашений")
             return result
         except Exception as e:

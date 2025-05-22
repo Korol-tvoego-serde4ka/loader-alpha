@@ -27,22 +27,27 @@ DB_NAME = os.getenv("DB_NAME", "loader_alpha")
 PG_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # URL для SQLite (запасной вариант)
-SQLITE_DATABASE_URL = "sqlite:///./database.db"
+SQLITE_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./database.db")
 
 # Сначала пробуем использовать PostgreSQL, если не получится - используем SQLite
 try:
     # Пробуем создать движок PostgreSQL
-    engine = create_engine(PG_DATABASE_URL)
-    # Пробуем подключиться
-    conn = engine.connect()
-    conn.close()
-    DATABASE_URL = PG_DATABASE_URL
-    print("Подключение к PostgreSQL успешно установлено")
+    if os.getenv("USE_POSTGRES", "False").lower() == "true":
+        engine = create_engine(PG_DATABASE_URL)
+        # Пробуем подключиться
+        conn = engine.connect()
+        conn.close()
+        DATABASE_URL = PG_DATABASE_URL
+        print("Подключение к PostgreSQL успешно установлено")
+    else:
+        # Явно используем SQLite из переменной окружения или по умолчанию
+        raise Exception("Настроено использование SQLite")
 except Exception as e:
-    print(f"Не удалось подключиться к PostgreSQL: {str(e)}. Используем SQLite.")
-    # Используем SQLite
+    print(f"Используем SQLite: {str(e)}")
+    # Используем SQLite с путем из переменной окружения или по умолчанию
     DATABASE_URL = SQLITE_DATABASE_URL
-    engine = create_engine(SQLITE_DATABASE_URL, connect_args={"check_same_thread": False})
+    print(f"URL базы данных SQLite: {DATABASE_URL}")
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 # Создание базового класса для моделей
 Base = declarative_base()

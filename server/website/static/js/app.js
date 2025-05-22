@@ -289,6 +289,8 @@ const api = {
             options.body = JSON.stringify(data);
         }
         
+        console.log(`ОТЛАДКА API: Отправка запроса ${method} ${API_URL}${endpoint}`);
+        
         // Улучшенное логирование запросов
         window.appLogger.logInfo(`API запрос: ${method} ${API_URL}${endpoint}`, {
             method,
@@ -1597,6 +1599,7 @@ async function loadAdminInvites() {
         dataCache.clearCache('inviteLimits');
         
         window.appLogger.logInfo("Запрашиваем новые данные для приглашений");
+        console.log("ОТЛАДКА: Запрашиваем данные приглашений из API");
         
         // Запрашиваем данные по очереди для более точной обработки ошибок
         try {
@@ -1610,8 +1613,15 @@ async function loadAdminInvites() {
         try {
             invitesData = await api.getInvites();
             window.appLogger.logInfo("Получены данные приглашений", invitesData);
+            console.log("ОТЛАДКА: Полученный ответ API приглашений:", JSON.stringify(invitesData, null, 2));
+            console.log("ОТЛАДКА: Тип данных invites:", Array.isArray(invitesData.invites) ? "Массив" : typeof invitesData.invites);
+            console.log("ОТЛАДКА: Количество записей:", invitesData.invites ? invitesData.invites.length : 0);
+            if (invitesData.invites && invitesData.invites.length > 0) {
+                console.log("ОТЛАДКА: Структура первого приглашения:", JSON.stringify(invitesData.invites[0], null, 2));
+            }
         } catch (invitesError) {
             window.appLogger.logError("Ошибка при загрузке приглашений", invitesError);
+            console.error("ОТЛАДКА: Ошибка при загрузке приглашений:", invitesError);
             utils.showNotification('warning', 'Не удалось загрузить список приглашений');
         }
         
@@ -1667,8 +1677,12 @@ async function loadAdminInvites() {
         if (userLimitValueAdmin) userLimitValueAdmin.value = limitsData.global_limits.user;
         
         // Отображение приглашений
+        console.log("ОТЛАДКА: Перед отображением приглашений. Массив invites:", invites);
+        
         if (!invites || invites.length === 0) {
             window.appLogger.logInfo("Список приглашений пуст");
+            console.log("ОТЛАДКА: Приглашения отсутствуют или их длина равна 0");
+            
             if (adminInvitesList) {
                 adminInvitesList.innerHTML = '<div class="alert alert-info">Нет приглашений для отображения. <button id="admin-create-invite" class="btn btn-primary btn-sm ml-2">Создать приглашение</button></div>';
                 adminInvitesList.style.display = 'block';
@@ -1684,6 +1698,7 @@ async function loadAdminInvites() {
             const tableBody = document.getElementById('admin-invites-table-body');
             if (tableBody) tableBody.innerHTML = '<tr><td colspan="8" class="text-center">Нет приглашений для отображения</td></tr>';
         } else {
+            console.log("ОТЛАДКА: Найдены приглашения, количество: " + invites.length);
             // Фильтрация по поисковому запросу
             const searchQuery = document.getElementById('admin-invites-search')?.value?.toLowerCase() || '';
             let filteredInvites = invites;
