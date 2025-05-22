@@ -1368,6 +1368,11 @@ class AdminUnlinkDiscord(Resource):
         db.commit()
         return {"message": "Discord-аккаунт успешно отвязан"}
 
+class DiscordInviteLink(Resource):
+    def get(self):
+        link = os.getenv("DISCORD_INVITE_LINK", "https://discord.com/")
+        return {"invite_link": link}
+
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
 api.add_resource(Register, "/api/users/register")
@@ -1400,6 +1405,7 @@ api.add_resource(AdminCleanupKeys, "/api/admin/keys/cleanup")
 api.add_resource(AdminGetCleanupStats, "/api/admin/keys/stats")
 api.add_resource(ChangePassword, "/api/change-password")
 api.add_resource(AdminUnlinkDiscord, "/api/admin/users/<int:user_id>/unlink-discord")
+api.add_resource(DiscordInviteLink, "/api/discord/invite-link")
 
 # Основной маршрут для одностраничного приложения
 @app.route('/', defaults={'path': ''})

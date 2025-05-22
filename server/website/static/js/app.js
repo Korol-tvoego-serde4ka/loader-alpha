@@ -332,6 +332,13 @@ const api = {
     unlinkDiscord: (userId) => {
         return api.request(`/admin/users/${userId}/unlink-discord`, 'POST');
     },
+    
+    // Получение Discord-инвайт ссылки
+    getDiscordInviteLink: async () => {
+        const response = await fetch('/api/discord/invite-link');
+        const data = await response.json();
+        return data.invite_link;
+    },
 };
 
 // Утилиты для форматирования
@@ -941,6 +948,18 @@ async function loadDiscordStatus() {
         } else {
             document.getElementById('discord-not-linked').style.display = 'block';
         }
+        
+        try {
+            const discordLink = await api.getDiscordInviteLink();
+            const discordLinkBtn = document.createElement('a');
+            discordLinkBtn.href = discordLink;
+            discordLinkBtn.target = '_blank';
+            discordLinkBtn.className = 'btn btn-info mt-3';
+            discordLinkBtn.textContent = 'Перейти в Discord';
+            // Вставим кнопку в discord-not-linked
+            const notLinkedBlock = document.getElementById('discord-not-linked');
+            if (notLinkedBlock) notLinkedBlock.appendChild(discordLinkBtn);
+        } catch (e) { /* ignore */ }
     } catch (error) {
         console.error('Ошибка при загрузке статуса Discord:', error);
     } finally {
