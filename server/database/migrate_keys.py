@@ -24,9 +24,9 @@ def migrate_keys():
     """
     try:
         logger.info("Начало миграции таблицы ключей...")
-        db = SessionLocal()
         
         # 1. Проверка существования столбца duration
+        db = SessionLocal()
         try:
             db.execute(text("SELECT duration FROM keys LIMIT 1"))
             logger.info("Столбец duration уже существует, пропускаем создание")
@@ -34,9 +34,12 @@ def migrate_keys():
         except Exception as e:
             logger.info("Столбец duration не существует, создаем его")
             duration_exists = False
+        finally:
+            db.close()
             
         # Добавляем столбец duration, если его нет
         if not duration_exists:
+            db = SessionLocal()
             try:
                 db.execute(text("ALTER TABLE keys ADD COLUMN duration INTEGER DEFAULT 86400 NOT NULL"))
                 db.commit()
@@ -44,19 +47,26 @@ def migrate_keys():
             except Exception as e:
                 logger.error(f"Ошибка при добавлении столбца duration: {str(e)}")
                 db.rollback()
+                db.close()
                 return False
+            finally:
+                db.close()
                 
         # 2. Проверка существования столбца expires_at
+        db = SessionLocal()
         try:
             db.execute(text("SELECT expires_at FROM keys LIMIT 1"))
             logger.info("Столбец expires_at уже существует, пропускаем создание")
             expires_exists = True
-        except:
+        except Exception as e:
             logger.info("Столбец expires_at не существует, создаем его")
             expires_exists = False
+        finally:
+            db.close()
         
         # Добавляем столбец expires_at, если его нет
         if not expires_exists:
+            db = SessionLocal()
             try:
                 db.execute(text("ALTER TABLE keys ADD COLUMN expires_at TIMESTAMP"))
                 db.commit()
@@ -64,26 +74,31 @@ def migrate_keys():
             except Exception as e:
                 logger.error(f"Ошибка при добавлении столбца expires_at: {str(e)}")
                 db.rollback()
+                db.close()
                 return False
+            finally:
+                db.close()
         
         # 3. Обновляем значения expires_at для существующих записей
+        db = SessionLocal()
         try:
             # Получаем все ключи
             keys = db.query(Key).all()
-            updated_count = 0
+            logger.info(f"Найдено {len(keys)} записей ключей")
             
+            updated_count = 0
             for key in keys:
                 # Проверяем, есть ли необходимость обновить expires_at
                 if not key.expires_at:
-                    # Вычисляем дату истечения
-                    if key.activated_at:
-                        key.expires_at = key.activated_at + datetime.timedelta(seconds=key.duration)
-                    else:
-                        key.expires_at = key.created_at + datetime.timedelta(seconds=key.duration)
+                    # Вычисляем дату истечения на основе даты создания
+                    key.expires_at = key.created_at + datetime.timedelta(days=1)
                     updated_count += 1
             
-            db.commit()
-            logger.info(f"Обновлено {updated_count} записей ключей")
+            if updated_count > 0:
+                db.commit()
+                logger.info(f"Обновлено {updated_count} записей ключей")
+            else:
+                logger.info("Нет записей для обновления")
             
             return True
             
@@ -91,12 +106,12 @@ def migrate_keys():
             logger.error(f"Ошибка при обновлении данных: {str(e)}")
             db.rollback()
             return False
+        finally:
+            db.close()
         
     except Exception as e:
         logger.error(f"Ошибка при миграции таблицы ключей: {str(e)}")
         return False
-    finally:
-        db.close()
 
 if __name__ == "__main__":
     success = migrate_keys()

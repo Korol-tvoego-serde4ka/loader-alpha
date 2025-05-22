@@ -106,6 +106,10 @@ class Key(Base):
     user = relationship("User", back_populates="keys")
     
     def __init__(self, **kwargs):
+        # Устанавливаем значение по умолчанию для duration, если не указано
+        if 'duration' not in kwargs:
+            kwargs['duration'] = 86400  # 1 день по умолчанию
+        
         super(Key, self).__init__(**kwargs)
         # Если expires_at не указан явно, вычисляем его
         if 'expires_at' not in kwargs:
