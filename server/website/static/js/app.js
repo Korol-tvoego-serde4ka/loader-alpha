@@ -327,6 +327,11 @@ const api = {
             throw error;
         }
     },
+    
+    // Отвязка Discord (для админов)
+    unlinkDiscord: (userId) => {
+        return api.request(`/admin/users/${userId}/unlink-discord`, 'POST');
+    },
 };
 
 // Утилиты для форматирования
@@ -1006,6 +1011,32 @@ async function loadAdminData() {
                     </div>
                 </td>
             `;
+            
+            // Внутри pageUsers.forEach(user => { ... })
+            // После блока с action-buttons:
+            if (user.discord_linked && userData && userData.is_admin) {
+                const unlinkBtn = document.createElement('button');
+                unlinkBtn.className = 'btn btn-warning btn-sm ml-1';
+                unlinkBtn.textContent = 'Отвязать Discord';
+                unlinkBtn.title = 'Отвязать Discord-аккаунт';
+                unlinkBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (confirm('Вы уверены, что хотите отвязать Discord у этого пользователя?')) {
+                        unlinkBtn.disabled = true;
+                        unlinkBtn.textContent = 'Отключение...';
+                        try {
+                            await api.unlinkDiscord(user.id);
+                            dataCache.clearCache('users');
+                            loadAdminData();
+                        } catch (error) {
+                            alert('Ошибка при отвязке Discord: ' + error.message);
+                            unlinkBtn.disabled = false;
+                            unlinkBtn.textContent = 'Отвязать Discord';
+                        }
+                    }
+                });
+                row.querySelector('.action-buttons').appendChild(unlinkBtn);
+            }
             
             tableBody.appendChild(row);
         });

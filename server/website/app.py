@@ -1347,6 +1347,27 @@ class ChangePassword(Resource):
         
         return {"message": "Пароль успешно изменен"}
 
+class AdminUnlinkDiscord(Resource):
+    @jwt_required()
+    def post(self, user_id):
+        current_user_id = get_jwt_identity()
+        db = get_db()
+        # Проверка, что текущий пользователь админ
+        current_user = db.query(User).filter(User.id == current_user_id).first()
+        if not current_user or not current_user.is_admin:
+            return {"message": "Недостаточно прав"}, 403
+        if current_user.is_banned:
+            return {"message": "Ваш аккаунт заблокирован"}, 403
+        # Находим пользователя
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"message": "Пользователь не найден"}, 404
+        # Отвязываем Discord
+        user.discord_id = None
+        user.discord_username = None
+        db.commit()
+        return {"message": "Discord-аккаунт успешно отвязан"}
+
 # Регистрация API ресурсов
 api.add_resource(Login, "/api/auth/login")
 api.add_resource(Register, "/api/users/register")
@@ -1378,6 +1399,7 @@ api.add_resource(AdminBulkKeyAction, "/api/admin/keys/bulk-action")
 api.add_resource(AdminCleanupKeys, "/api/admin/keys/cleanup")
 api.add_resource(AdminGetCleanupStats, "/api/admin/keys/stats")
 api.add_resource(ChangePassword, "/api/change-password")
+api.add_resource(AdminUnlinkDiscord, "/api/admin/users/<int:user_id>/unlink-discord")
 
 # Основной маршрут для одностраничного приложения
 @app.route('/', defaults={'path': ''})
