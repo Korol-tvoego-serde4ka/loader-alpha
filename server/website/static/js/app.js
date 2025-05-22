@@ -1495,18 +1495,32 @@ async function loadAdminInvites() {
     if (adminInvitesList) adminInvitesList.style.display = 'none';
     
     try {
-        console.log("Начинаем загрузку приглашений в админке");
-        let invitesData, limitsData;
+        window.appLogger.logInfo("Начинаем загрузку приглашений в админке");
+        let invitesData = { invites: [] };
+        let limitsData = { global_limits: { admin: 0, support: 0, user: 0 } };
         
-        // Очистим кэш для тестирования
+        // Очищаем кэш
         dataCache.clearCache('invites');
         dataCache.clearCache('inviteLimits');
         
-        console.log("Запрашиваем новые данные для приглашений");
-        [invitesData, limitsData] = await Promise.all([
-            api.getInvites(),
-            api.getInviteLimits()
-        ]);
+        window.appLogger.logInfo("Запрашиваем новые данные для приглашений");
+        
+        // Запрашиваем данные по очереди для более точной обработки ошибок
+        try {
+            limitsData = await api.getInviteLimits();
+            window.appLogger.logInfo("Получены данные лимитов", limitsData);
+        } catch (limitsError) {
+            window.appLogger.logError("Ошибка при загрузке лимитов", limitsError);
+            utils.showNotification('warning', 'Не удалось загрузить информацию о лимитах');
+        }
+        
+        try {
+            invitesData = await api.getInvites();
+            window.appLogger.logInfo("Получены данные приглашений", invitesData);
+        } catch (invitesError) {
+            window.appLogger.logError("Ошибка при загрузке приглашений", invitesError);
+            utils.showNotification('warning', 'Не удалось загрузить список приглашений');
+        }
         
         console.log("Получены данные приглашений:", invitesData);
         console.log("Получены данные лимитов:", limitsData);
