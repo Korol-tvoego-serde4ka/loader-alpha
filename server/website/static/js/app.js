@@ -214,7 +214,8 @@ const api = {
     
     // Создание инвайта
     generateInvite: () => {
-        return api.request('/invites/generate', 'POST');
+        console.log('Отправка запроса на создание инвайта');
+        return api.request('/invites/generate', 'POST', {});
     },
     
     // Получение лимитов инвайтов
@@ -257,10 +258,11 @@ const api = {
     
     // Установка лимитов инвайтов (для админов)
     setInviteLimits: (adminLimit, supportLimit, userLimit) => {
+        console.log('Отправка лимитов:', {adminLimit, supportLimit, userLimit});
         return api.request('/admin/invites/limits', 'POST', {
-            admin_limit: adminLimit,
-            support_limit: supportLimit,
-            user_limit: userLimit
+            admin_limit: parseInt(adminLimit),
+            support_limit: parseInt(supportLimit),
+            user_limit: parseInt(userLimit)
         });
     },
     
@@ -1338,32 +1340,59 @@ function setupAdminEventHandlers() {
     // Добавляем обработчик для формы управления лимитами приглашений в админке
     const setInviteLimitsFormAdmin = document.getElementById('set-invite-limits-form-admin');
     if (setInviteLimitsFormAdmin) {
+        console.log('Найдена форма лимитов админа:', setInviteLimitsFormAdmin);
         setInviteLimitsFormAdmin.addEventListener('submit', async (e) => {
+            console.log('Форма лимитов отправлена');
             e.preventDefault();
             
             const adminLimit = document.getElementById('admin-limit-value-admin').value;
             const supportLimit = document.getElementById('support-limit-value-admin').value;
             const userLimit = document.getElementById('user-limit-value-admin').value;
             
+            console.log('Значения лимитов:', {adminLimit, supportLimit, userLimit});
+            
             const errorElement = document.getElementById('set-limits-error-admin');
             const successElement = document.getElementById('set-limits-success-admin');
             
-            errorElement.style.display = 'none';
-            successElement.style.display = 'none';
+            if (errorElement) errorElement.style.display = 'none';
+            if (successElement) successElement.style.display = 'none';
+            
+            const saveButton = setInviteLimitsFormAdmin.querySelector('button[type="submit"]');
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Сохранение...';
+            }
                 
-                try {
-                await api.setInviteLimits(adminLimit, supportLimit, userLimit);
+            try {
+                const result = await api.setInviteLimits(adminLimit, supportLimit, userLimit);
+                console.log('Результат установки лимитов:', result);
+                
                 dataCache.clearCache('inviteLimits');
-                successElement.style.display = 'block';
+                
+                if (successElement) successElement.style.display = 'block';
                 // Обновляем также данные в обычной вкладке приглашений
-                document.getElementById('admin-limit-value').value = adminLimit;
-                document.getElementById('support-limit-value').value = supportLimit;
-                document.getElementById('user-limit-value').value = userLimit;
-                } catch (error) {
-                errorElement.textContent = `Ошибка: ${error.message}`;
-                errorElement.style.display = 'block';
+                const mainAdminLimit = document.getElementById('admin-limit-value');
+                const mainSupportLimit = document.getElementById('support-limit-value');
+                const mainUserLimit = document.getElementById('user-limit-value');
+                
+                if (mainAdminLimit) mainAdminLimit.value = adminLimit;
+                if (mainSupportLimit) mainSupportLimit.value = supportLimit;
+                if (mainUserLimit) mainUserLimit.value = userLimit;
+            } catch (error) {
+                console.error('Ошибка при установке лимитов:', error);
+                if (errorElement) {
+                    errorElement.textContent = `Ошибка: ${error.message}`;
+                    errorElement.style.display = 'block';
+                }
+            } finally {
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = 'Сохранить';
+                }
             }
         });
+    } else {
+        console.error('Не найдена форма с ID set-invite-limits-form-admin');
     }
     
     // Обработчик для кнопки создания приглашения в админке

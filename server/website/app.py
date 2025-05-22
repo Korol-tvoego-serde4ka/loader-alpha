@@ -10,6 +10,19 @@ import secrets
 import string
 from passlib.context import CryptContext
 from sqlalchemy import inspect
+import time
+import logging
+from dotenv import load_dotenv
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Добавление пути к корню проекта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,6 +41,9 @@ api = Api(app)
 app.config["JWT_SECRET_KEY"] = os.getenv("SECRET_KEY", "your_secret_key")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(days=1)
 jwt = JWTManager(app)
+
+# Загрузка переменных окружения
+load_dotenv()
 
 # Инициализация базы данных - проверка и создание необходимых таблиц
 def init_database():
@@ -409,6 +425,7 @@ class GenerateInvite(Resource):
     @jwt_required()
     def post(self):
         try:
+            logger.info("Получен запрос на создание приглашения")
             user_id = get_jwt_identity()
             db = get_db()
             
@@ -423,10 +440,18 @@ class GenerateInvite(Resource):
             if not user.can_create_invite():
                 return {"message": "Недостаточно прав для создания инвайтов"}, 403
             
-            # Хардкодим значения лимитов, так как таблица может не существовать
-            admin_monthly_invites = 999
-            support_monthly_invites = 10
-            user_monthly_invites = 0
+            # Получаем лимиты из базы данных или используем дефолтные значения
+            role_limits = db.query(RoleLimits).first()
+            
+            if role_limits:
+                admin_monthly_invites = role_limits.admin_monthly_invites
+                support_monthly_invites = role_limits.support_monthly_invites
+                user_monthly_invites = role_limits.user_monthly_invites
+            else:
+                # Если запись не найдена, используем значения по умолчанию
+                admin_monthly_invites = 999
+                support_monthly_invites = 10
+                user_monthly_invites = 0
             
             # Определение лимита для пользователя в зависимости от его роли
             if user.is_admin:
@@ -457,6 +482,8 @@ class GenerateInvite(Resource):
             db.add(invite)
             db.commit()
             db.refresh(invite)
+            
+            logger.info(f"Создано новое приглашение с кодом {invite.code} пользователем {user.username}")
             
             return {
                 "code": invite.code,
@@ -943,6 +970,7 @@ class AdminSetInviteLimits(Resource):
     @jwt_required()
     def post(self):
         try:
+            logger.info("Получен запрос на установку лимитов приглашений")
             user_id = get_jwt_identity()
             db = get_db()
             
@@ -960,8 +988,26 @@ class AdminSetInviteLimits(Resource):
             support_limit = data.get("support_limit", 10)
             user_limit = data.get("user_limit", 0)
             
-            # Для обхода отсутствия таблицы role_limits просто возвращаем успех
-            # В будущем, когда таблица будет создана, можно будет вернуть к исходной реализации
+            # Проверяем, существует ли запись с лимитами
+            role_limits = db.query(RoleLimits).first()
+            
+            if not role_limits:
+                # Если записи нет, создаем новую
+                role_limits = RoleLimits(
+                    admin_monthly_invites=admin_limit,
+                    support_monthly_invites=support_limit,
+                    user_monthly_invites=user_limit
+                )
+                db.add(role_limits)
+            else:
+                # Иначе обновляем существующую
+                role_limits.admin_monthly_invites = admin_limit
+                role_limits.support_monthly_invites = support_limit
+                role_limits.user_monthly_invites = user_limit
+            
+            db.commit()
+            
+            logger.info(f"Лимиты приглашений успешно обновлены: admin={admin_limit}, support={support_limit}, user={user_limit}")
             
             return {
                 "admin_limit": admin_limit,
@@ -990,10 +1036,18 @@ class GetInviteLimits(Resource):
             if user.is_banned:
                 return {"message": "Ваш аккаунт заблокирован"}, 403
             
-            # Хардкодим значения лимитов, так как таблица может не существовать
-            admin_monthly_invites = 999
-            support_monthly_invites = 10
-            user_monthly_invites = 0
+            # Получаем лимиты из базы данных или используем дефолтные значения
+            role_limits = db.query(RoleLimits).first()
+            
+            if role_limits:
+                admin_monthly_invites = role_limits.admin_monthly_invites
+                support_monthly_invites = role_limits.support_monthly_invites
+                user_monthly_invites = role_limits.user_monthly_invites
+            else:
+                # Если запись не найдена, используем значения по умолчанию
+                admin_monthly_invites = 999
+                support_monthly_invites = 10
+                user_monthly_invites = 0
             
             # Подсчет количества использованных инвайтов за текущий месяц
             current_month_start = datetime.datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)

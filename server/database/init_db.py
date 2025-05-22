@@ -1,44 +1,46 @@
+#!/usr/bin/env python
 import os
-import sys
 import datetime
-from passlib.context import CryptContext
+import secrets
+import string
+import getpass
 from dotenv import load_dotenv
+import sys
+import logging
 
-# Добавление пути к корню проекта
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.models import init_db, SessionLocal, User, Invite, RoleLimits
 
-from database.models import init_db, SessionLocal, User, Invite
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Загрузка переменных окружения
 load_dotenv()
 
-# Настройка шифрования паролей
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def hash_password(password):
-    return pwd_context.hash(password)
-
 def create_admin_user(db_session):
-    """Создание администратора по умолчанию"""
+    """Создание пользователя-администратора"""
+    # Проверка, существует ли уже пользователь admin
+    existing_admin = db_session.query(User).filter_by(username="admin").first()
+    if existing_admin:
+        print("Пользователь admin уже существует")
+        return existing_admin
+    
+    # Получение данных для создания администратора из переменных окружения
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD", "admin")
+    admin_password = os.getenv("ADMIN_PASSWORD")
     admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
     
-    # Проверка, существует ли уже пользователь с таким именем
-    existing_user = db_session.query(User).filter(User.username == admin_username).first()
-    if existing_user:
-        print(f"Пользователь {admin_username} уже существует.")
-        return existing_user
+    if not admin_password:
+        admin_password = input("Введите пароль для администратора: ")
     
-    # Проверка наличия пароля в переменных окружения
-    if os.getenv("ADMIN_PASSWORD") is None:
-        print("ВНИМАНИЕ: Используется пароль по умолчанию. Настоятельно рекомендуется установить ADMIN_PASSWORD в .env файле")
+    # Создание хеша пароля
+    password_hash = generate_password_hash(admin_password)
     
-    # Создание нового пользователя-администратора
+    # Создание пользователя
     admin = User(
         username=admin_username,
         email=admin_email,
-        password_hash=hash_password(admin_password),
+        password_hash=password_hash,
         is_admin=True
     )
     
@@ -46,8 +48,7 @@ def create_admin_user(db_session):
     db_session.commit()
     db_session.refresh(admin)
     
-    print(f"Создан пользователь-администратор: {admin_username}")
-    print("Убедитесь, что вы изменили пароль администратора при первом входе")
+    print(f"Создан аккаунт администратора: {admin_username}")
     return admin
 
 def create_initial_invite(db_session, admin):
@@ -67,32 +68,55 @@ def create_initial_invite(db_session, admin):
     print(f"Создан начальный инвайт-код: {invite.code}")
     return invite
 
-def main():
-    """Основная функция инициализации базы данных"""
-    print("Инициализация базы данных...")
+def create_initial_role_limits(db_session):
+    """Создание начальных лимитов для ролей"""
+    existing_limits = db_session.query(RoleLimits).first()
+    if existing_limits:
+        print("Лимиты для ролей уже существуют")
+        return existing_limits
     
-    # Создание таблиц в базе данных
-    init_db()
-    print("Таблицы базы данных созданы.")
+    role_limits = RoleLimits(
+        admin_monthly_invites=999,
+        support_monthly_invites=10,
+        user_monthly_invites=0
+    )
     
-    # Создание сессии для работы с базой данных
-    db = SessionLocal()
+    db_session.add(role_limits)
+    db_session.commit()
+    db_session.refresh(role_limits)
     
+    print("Созданы начальные лимиты для ролей")
+    return role_limits
+
+def generate_password_hash(password):
+    """Генерация хеша пароля"""
+    import hashlib
+    # Простая реализация на основе SHA-256
+    return hashlib.sha256(password.encode()).hexdigest()
+
+if __name__ == "__main__":
     try:
+        # Инициализация базы данных
+        print("Подключение к PostgreSQL...")
+        init_db()
+        print("Подключение к PostgreSQL успешно установлено")
+        
+        # Создание сессии для работы с базой данных
+        db = SessionLocal()
+        
         # Создание администратора
         admin = create_admin_user(db)
         
-        # Создание начального инвайт-кода
+        # Создание начального инвайта
         invite = create_initial_invite(db, admin)
         
-        print("Инициализация базы данных завершена успешно.")
-        print(f"Администратор: {admin.username}")
-        print(f"Инвайт-код: {invite.code}")
+        # Создание начальных лимитов для ролей
+        role_limits = create_initial_role_limits(db)
         
+        # Закрытие сессии
+        db.close()
+        
+        print("Инициализация базы данных завершена успешно")
     except Exception as e:
         print(f"Ошибка при инициализации базы данных: {e}")
-    finally:
-        db.close()
-
-if __name__ == "__main__":
-    main() 
+        sys.exit(1) 

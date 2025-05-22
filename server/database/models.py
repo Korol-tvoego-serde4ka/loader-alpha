@@ -7,13 +7,18 @@ import secrets
 import string
 import datetime
 from dotenv import load_dotenv
+import logging
+
+# Логирование
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Загрузка переменных окружения
 load_dotenv()
 
 # Настройка подключения к базе данных
-DB_USER = os.getenv("DB_USER", "loader_user")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "your_password")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "loader_alpha")
@@ -43,14 +48,10 @@ except Exception as e:
 Base = declarative_base()
 
 # Создание генератора случайных строк для ключей и кодов
-def generate_random_string(length=4, segments=4):
-    """Генерирует случайную строку в формате XXXX-XXXX-XXXX-XXXX"""
-    chars = string.ascii_uppercase + string.digits
-    segments_list = []
-    for _ in range(segments):
-        segment = ''.join(secrets.choice(chars) for _ in range(length))
-        segments_list.append(segment)
-    return "-".join(segments_list)
+def generate_random_string(length=16):
+    """Генерация случайной строки заданной длины"""
+    characters = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(characters) for _ in range(length))
 
 # Модель пользователя
 class User(Base):
@@ -93,58 +94,69 @@ class Key(Base):
     __tablename__ = "keys"
 
     id = Column(Integer, primary_key=True)
-    key = Column(String(50), unique=True, nullable=False, default=lambda: generate_random_string())
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Может быть не привязан к пользователю
+    key = Column(String(50), unique=True, nullable=False, default=lambda: generate_random_string(32))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
-    expires_at = Column(DateTime, nullable=False)
-    is_active = Column(Boolean, default=True)
-    activated_at = Column(DateTime, nullable=True)  # Время привязки к аккаунту
+    activated_at = Column(DateTime, nullable=True)
+    duration = Column(Integer, nullable=False, default=86400)  # Длительность в секундах (по умолчанию 1 день)
+    is_active = Column(Boolean, default=True)  # Активен ли ключ (можно отозвать)
     
     # Отношения
     user = relationship("User", back_populates="keys")
     
+    @property
+    def expires_at(self):
+        """Возвращает дату/время истечения ключа"""
+        if not self.activated_at:
+            # Если ключ не активирован, возвращаем дату создания + продолжительность
+            return self.created_at + datetime.timedelta(seconds=self.duration)
+        return self.activated_at + datetime.timedelta(seconds=self.duration)
+    
     def is_expired(self):
-        """Проверяет, истёк ли ключ"""
-        # Если ключ не активирован, он не может истечь
+        """Проверяет, истек ли ключ"""
+        # Если ключ не активирован, он не истекает
         if not self.activated_at:
             return False
         return datetime.datetime.utcnow() > self.expires_at
-
+    
+    @property
     def time_left(self):
         """Возвращает оставшееся время действия ключа в секундах"""
-        # Если ключ не активирован, вернуть полное время, как будто только что создан
+        if not self.is_active:
+            return 0
+        
+        # Если ключ не активирован, возвращаем полную продолжительность
         if not self.activated_at:
-            # Вычисляем исходную продолжительность в секундах (от создания до истечения)
-            original_duration = (self.expires_at - self.created_at).total_seconds()
-            return int(original_duration)
+            return self.duration
             
         if self.is_expired():
             return 0
-        delta = self.expires_at - datetime.datetime.utcnow()
-        return max(0, int(delta.total_seconds()))
         
-    @classmethod
-    def create_custom_key(cls, key_value, user_id=None, duration_hours=24):
-        """Создает ключ с пользовательским значением"""
-        # Устанавливаем expires_at на будущую дату от текущего момента
-        # При активации ключа, expires_at будет пересчитан
-        created_at = datetime.datetime.utcnow()
-        expires_at = created_at + datetime.timedelta(hours=duration_hours)
-        return cls(
-            key=key_value,
-            user_id=user_id,
-            expires_at=expires_at
-        )
+        remaining = (self.expires_at - datetime.datetime.utcnow()).total_seconds()
+        return max(0, int(remaining))
 
-    def duration_hours(self):
-        """Возвращает продолжительность действия ключа в часах"""
-        if self.activated_at:
-            # Для активированных ключей берем разницу между expires_at и activated_at
-            duration = (self.expires_at - self.activated_at).total_seconds() / 3600
-        else:
-            # Для неактивированных ключей берем разницу между expires_at и created_at
-            duration = (self.expires_at - self.created_at).total_seconds() / 3600
-        return round(duration, 1)
+    @classmethod
+    def create_custom_key(cls, db, duration_hours=24, user_id=None, custom_key=None):
+        """Создает ключ с заданными параметрами"""
+        duration_seconds = duration_hours * 3600
+        
+        key = Key(
+            user_id=user_id,
+            duration=duration_seconds
+        )
+        
+        if custom_key:
+            # Проверяем, существует ли такой ключ
+            existing_key = db.query(Key).filter(Key.key == custom_key).first()
+            if existing_key:
+                raise ValueError("Ключ с таким значением уже существует")
+            key.key = custom_key
+        
+        db.add(key)
+        db.commit()
+        db.refresh(key)
+        
+        return key
 
 # Модель инвайт-кода
 class Invite(Base):
@@ -171,7 +183,7 @@ class DiscordCode(Base):
     __tablename__ = "discord_codes"
 
     id = Column(Integer, primary_key=True)
-    code = Column(String(10), unique=True, nullable=False)
+    code = Column(String(8), unique=True, nullable=False, default=lambda: generate_random_string(8))
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     expires_at = Column(DateTime, nullable=False)
@@ -208,4 +220,26 @@ def get_db():
 
 # Функция для инициализации базы данных
 def init_db():
-    Base.metadata.create_all(bind=engine) 
+    try:
+        logger.info("Начало создания таблиц в базе данных...")
+        Base.metadata.create_all(bind=engine)
+        
+        # Создаем запись с лимитами, если её нет
+        db = SessionLocal()
+        try:
+            role_limits = db.query(RoleLimits).first()
+            if not role_limits:
+                logger.info("Создание начальных лимитов для ролей...")
+                role_limits = RoleLimits()
+                db.add(role_limits)
+                db.commit()
+                logger.info("Начальные лимиты для ролей созданы успешно")
+        except Exception as e:
+            logger.error(f"Ошибка при создании лимитов для ролей: {str(e)}")
+        finally:
+            db.close()
+        
+        logger.info("Таблицы успешно созданы")
+    except Exception as e:
+        logger.error(f"Ошибка при создании таблиц: {str(e)}")
+        raise 
