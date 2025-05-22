@@ -974,34 +974,39 @@ async function loadInvites() {
         if (adminInviteLimits) adminInviteLimits.style.display = 'none';
         if (deleteSelectedInvitesButton) deleteSelectedInvitesButton.style.display = 'none';
     
-    try {
         // Загрузка инвайтов и лимитов одновременно
-            let invitesData, limitsData;
+        let invitesData, limitsData;
+        
+        // Очищаем кэш для свежих данных
+        dataCache.clearCache('invites');
+        
+        if (dataCache.isCacheValid('invites')) {
+            invitesData = { invites: dataCache.invites };
+            limitsData = dataCache.inviteLimits;
+        } else {
+            console.log("Запрашиваем новые данные для приглашений");
+            window.appLogger.logInfo("Запрос данных приглашений");
+            [invitesData, limitsData] = await Promise.all([
+                api.getInvites(),
+                api.getInviteLimits()
+            ]);
             
-            if (dataCache.isCacheValid('invites')) {
-                invitesData = { invites: dataCache.invites };
-                limitsData = dataCache.inviteLimits;
-            } else {
-                console.log("Запрашиваем новые данные для приглашений");
-                [invitesData, limitsData] = await Promise.all([
-            api.getInvites(),
-            api.getInviteLimits()
-        ]);
-                
-                console.log("Получены данные приглашений:", invitesData);
-                
-                // Проверяем, что данные получены в правильном формате
-                if (!invitesData || !invitesData.invites || !Array.isArray(invitesData.invites)) {
-                    console.error("Неверный формат данных приглашений:", invitesData);
-                    if (invitesList) invitesList.innerHTML = '<p class="text-danger">Ошибка загрузки приглашений: неверный формат данных</p>';
-                    if (invitesLoading) invitesLoading.style.display = 'none';
-                    if (invitesList) invitesList.style.display = 'block';
-                    return;
-                }
-                
-                dataCache.updateCache('invites', invitesData.invites);
-                dataCache.updateCache('inviteLimits', limitsData);
+            console.log("Получены данные приглашений:", invitesData);
+            window.appLogger.logInfo("Получены данные приглашений", invitesData);
+            
+            // Проверяем, что данные получены в правильном формате
+            if (!invitesData || !invitesData.invites || !Array.isArray(invitesData.invites)) {
+                console.error("Неверный формат данных приглашений:", invitesData);
+                window.appLogger.logError("Неверный формат данных приглашений", invitesData);
+                if (invitesList) invitesList.innerHTML = '<p class="text-danger">Ошибка загрузки приглашений: неверный формат данных</p>';
+                if (invitesLoading) invitesLoading.style.display = 'none';
+                if (invitesList) invitesList.style.display = 'block';
+                return;
             }
+            
+            dataCache.updateCache('invites', invitesData.invites);
+            dataCache.updateCache('inviteLimits', limitsData);
+        }
         
         const invites = invitesData.invites;
         
@@ -1194,12 +1199,13 @@ async function loadInvites() {
         }
     } catch (error) {
         console.error('Ошибка при загрузке инвайтов:', error);
-            if (invitesList) invitesList.innerHTML = `<p class="text-danger">Ошибка при загрузке приглашений: ${error.message}</p>`;
-    } finally {
-            if (invitesLoading) invitesLoading.style.display = 'none';
+        window.appLogger.logError('Ошибка при загрузке приглашений:', error);
+        if (invitesList) {
+            invitesList.innerHTML = `<p class="text-danger">Ошибка при загрузке приглашений: ${error.message}</p>`;
+            invitesList.style.display = 'block';
         }
-    } catch (error) {
-        console.error('Fatal error in loadInvites function:', error);
+    } finally {
+        if (invitesLoading) invitesLoading.style.display = 'none';
     }
 }
 
