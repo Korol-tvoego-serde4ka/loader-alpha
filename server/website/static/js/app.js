@@ -289,7 +289,13 @@ const api = {
             options.body = JSON.stringify(data);
         }
         
-        console.log(`API запрос: ${method} ${API_URL}${endpoint}`, options);
+        // Улучшенное логирование запросов
+        window.appLogger.logInfo(`API запрос: ${method} ${API_URL}${endpoint}`, {
+            method,
+            endpoint,
+            hasBody: !!data,
+            includesAuth: includeToken
+        });
         
         try {
             const response = await fetch(`${API_URL}${endpoint}`, options);
@@ -364,7 +370,7 @@ const api = {
     
     // Создание инвайта
     createInvite: () => {
-        console.log('Отправка запроса на создание инвайта');
+        window.appLogger.logInfo('Отправка запроса на создание инвайта');
         return api.request('/invites/generate', 'POST', {});
     },
     
@@ -1178,12 +1184,32 @@ async function loadInvites() {
 
 // Функция для генерации нового приглашения
 async function generateInvite() {
+    // Показываем индикаторы загрузки
+    const invitesLoading = document.getElementById('invites-loading');
+    const adminInvitesLoading = document.getElementById('admin-invites-loading');
+    
+    if (invitesLoading) invitesLoading.style.display = 'block';
+    if (adminInvitesLoading) adminInvitesLoading.style.display = 'block';
+    
     try {
-        // Показываем индикатор загрузки
-        const invitesLoading = document.getElementById('invites-loading');
-        if (invitesLoading) invitesLoading.style.display = 'block';
-        
         window.appLogger.logInfo("Отправляем запрос на генерацию приглашения");
+        
+        // Получаем кнопки создания приглашений
+        const generateInviteButton = document.getElementById('generate-invite-button');
+        const adminGenerateInviteButton = document.getElementById('admin-generate-invite-button');
+        
+        // Блокируем кнопки, чтобы предотвратить повторные нажатия
+        if (generateInviteButton) {
+            generateInviteButton.disabled = true;
+            generateInviteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Создание...';
+        }
+        
+        if (adminGenerateInviteButton) {
+            adminGenerateInviteButton.disabled = true;
+            adminGenerateInviteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Создание...';
+        }
+        
+        // Отправляем запрос на создание приглашения
         const response = await api.createInvite();
         window.appLogger.logInfo("Ответ сервера при генерации приглашения", response);
         
@@ -1192,29 +1218,55 @@ async function generateInvite() {
             window.appLogger.logInfo("Приглашение успешно создано:", response.code);
             dataCache.clearCache('invites');
             
-            // Перезагружаем списки приглашений
-            const isAdmin = document.getElementById('admin-tab');
-            if (isAdmin && isAdmin.classList.contains('active')) {
-                // Если активна вкладка админа, обновляем список в админке
-                await loadAdminInvites();
-            } else {
-                // Иначе обновляем обычный список приглашений
-                await loadInvites();
+            // Определяем, в какой вкладке мы находимся
+            let inAdminTab = false;
+            const adminTab = document.getElementById('admin-tab');
+            const invitesAdminTab = document.getElementById('invites-admin-tab');
+            
+            if ((adminTab && adminTab.classList.contains('active')) || 
+                (invitesAdminTab && invitesAdminTab.classList.contains('active'))) {
+                inAdminTab = true;
             }
             
-            // Показываем уведомление
+            try {
+                // Если мы в админке, обновляем список в админке
+                if (inAdminTab) {
+                    await loadAdminInvites();
+                } else {
+                    // Иначе обновляем обычный список приглашений
+                    await loadInvites();
+                }
+            } catch (loadError) {
+                window.appLogger.logError("Ошибка при обновлении списка приглашений", loadError);
+            }
+            
+            // Показываем уведомление об успехе
             utils.showNotification('success', `Новое приглашение создано: ${response.code}`);
         } else {
             window.appLogger.logError("Ошибка при создании приглашения: неверный формат ответа", response);
-            utils.showNotification('danger', 'Ошибка при создании приглашения');
+            utils.showNotification('danger', 'Ошибка при создании приглашения: неверный ответ сервера');
         }
     } catch (error) {
-        console.error("Ошибка при создании приглашения:", error);
+        window.appLogger.logError("Критическая ошибка при создании приглашения", error);
         utils.showNotification('danger', `Ошибка при создании приглашения: ${error.message || 'неизвестная ошибка'}`);
     } finally {
-        // Скрываем индикатор загрузки
-        const invitesLoading = document.getElementById('invites-loading');
+        // Разблокируем кнопки
+        const generateInviteButton = document.getElementById('generate-invite-button');
+        const adminGenerateInviteButton = document.getElementById('admin-generate-invite-button');
+        
+        if (generateInviteButton) {
+            generateInviteButton.disabled = false;
+            generateInviteButton.textContent = 'Создать приглашение';
+        }
+        
+        if (adminGenerateInviteButton) {
+            adminGenerateInviteButton.disabled = false;
+            adminGenerateInviteButton.textContent = 'Создать приглашение';
+        }
+        
+        // Скрываем индикаторы загрузки
         if (invitesLoading) invitesLoading.style.display = 'none';
+        if (adminInvitesLoading) adminInvitesLoading.style.display = 'none';
     }
 }
 
@@ -1522,16 +1574,40 @@ async function loadAdminInvites() {
             utils.showNotification('warning', 'Не удалось загрузить список приглашений');
         }
         
-        console.log("Получены данные приглашений:", invitesData);
-        console.log("Получены данные лимитов:", limitsData);
+        window.appLogger.logInfo("Проверка данных приглашений и лимитов");
         
-        // Проверяем, что данные получены в правильном формате
-        if (!invitesData || !invitesData.invites || !Array.isArray(invitesData.invites)) {
-            console.error("Неверный формат данных приглашений:", invitesData);
-            if (adminInvitesList) adminInvitesList.innerHTML = '<p class="text-danger">Ошибка загрузки приглашений: неверный формат данных</p>';
-            if (adminInvitesLoading) adminInvitesLoading.style.display = 'none';
-            if (adminInvitesList) adminInvitesList.style.display = 'block';
-            return;
+        // Проверяем, что данные лимитов получены в правильном формате
+        if (!limitsData || !limitsData.global_limits) {
+            window.appLogger.logError("Неверный формат данных лимитов:", limitsData);
+            // Создаем безопасную структуру данных по умолчанию
+            limitsData = { 
+                global_limits: { admin: 0, support: 0, user: 0 },
+                monthly_limit: 0,
+                used_invites: 0,
+                remaining_invites: 0
+            };
+        }
+        
+        // Проверяем, что данные приглашений получены в правильном формате
+        if (!invitesData || !invitesData.invites) {
+            window.appLogger.logError("Неверный формат данных приглашений:", invitesData);
+            invitesData = { invites: [] };
+            if (adminInvitesList) {
+                adminInvitesList.innerHTML = '<div class="alert alert-warning">Не удалось загрузить список приглашений. <button id="reload-admin-invites" class="btn btn-sm btn-primary ml-2">Попробовать снова</button></div>';
+                adminInvitesLoading.style.display = 'none';
+                adminInvitesList.style.display = 'block';
+                
+                // Добавляем обработчик для кнопки "Попробовать снова"
+                document.getElementById('reload-admin-invites')?.addEventListener('click', function() {
+                    // Очищаем кэш и запускаем повторную загрузку
+                    dataCache.clearCache('invites');
+                    loadAdminInvites();
+                    utils.showNotification('info', 'Обновление списка приглашений...');
+                });
+            }
+        } else if (!Array.isArray(invitesData.invites)) {
+            window.appLogger.logError("Неверный формат массива приглашений:", invitesData);
+            invitesData.invites = [];
         }
         
         dataCache.updateCache('invites', invitesData.invites);
@@ -1831,6 +1907,35 @@ function setupAdminEventHandlers() {
         exportAdminInvitesBtn.addEventListener('click', () => {
             exportTableToCSV('admin-invites-table', 'Приглашения.csv');
         });
+    }
+    
+    // Добавляем кнопку для обновления списка приглашений
+    const refreshAdminInvitesBtn = document.createElement('button');
+    refreshAdminInvitesBtn.className = 'btn btn-info btn-sm ml-2';
+    refreshAdminInvitesBtn.innerHTML = '<i class="fas fa-sync"></i> Обновить';
+    refreshAdminInvitesBtn.title = 'Обновить список приглашений';
+    refreshAdminInvitesBtn.addEventListener('click', () => {
+        window.appLogger.logInfo('Ручное обновление списка приглашений в админ-панели');
+        dataCache.clearCache('invites');
+        loadAdminInvites();
+        utils.showNotification('info', 'Обновление списка приглашений...');
+    });
+    
+    // Находим элемент, после которого нужно добавить кнопку обновления
+    let adminInvitesHeader = null;
+    
+    // Поиск заголовка
+    document.querySelectorAll('.card-header').forEach(header => {
+        if (header.querySelector('#admin-invites-search') || header.querySelector('.admin-invites-search')) {
+            adminInvitesHeader = header;
+        }
+    });
+    
+    if (adminInvitesHeader) {
+        adminInvitesHeader.appendChild(refreshAdminInvitesBtn);
+        window.appLogger.logInfo('Добавлена кнопка обновления списка приглашений в админке');
+    } else {
+        window.appLogger.logWarning('Не найден заголовок для добавления кнопки обновления приглашений');
     }
 }
 
