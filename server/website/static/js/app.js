@@ -1973,7 +1973,7 @@ function setupAdminEventHandlers() {
     const exportAdminInvitesBtn = document.getElementById('export-admin-invites-btn');
     if (exportAdminInvitesBtn) {
         exportAdminInvitesBtn.addEventListener('click', () => {
-            exportTableToCSV('admin-invites-table', 'Приглашения.csv');
+            exportUtils.exportTableToCSV('admin-invites-table', 'Приглашения.csv');
         });
     }
     
