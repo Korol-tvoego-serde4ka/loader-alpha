@@ -191,7 +191,8 @@ class Register(Resource):
         test_key_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=1)
         test_key = Key(
             user_id=new_user.id,
-            expires_at=test_key_expiry
+            expires_at=test_key_expiry,
+            activated_at=datetime.datetime.utcnow()  # Сразу активируем тестовый ключ
         )
         
         db.add(test_key)
@@ -223,9 +224,12 @@ class KeyResource(Resource):
                     "id": key.id,
                     "key": key.key,
                     "created_at": key.created_at.isoformat(),
+                    "activated_at": key.activated_at.isoformat() if key.activated_at else None,
                     "expires_at": key.expires_at.isoformat(),
                     "is_active": key.is_active and not key.is_expired(),
-                    "time_left": key.time_left()
+                    "time_left": key.time_left(),
+                    "duration_hours": key.duration_hours(),
+                    "status": "Активирован" if key.activated_at else "Не активирован"
                 } for key in keys
             ]
         }
@@ -320,6 +324,13 @@ class RedeemKey(Resource):
         if key.user_id is None:
             key.user_id = user_id
             key.activated_at = datetime.datetime.utcnow()
+            
+            # Вычисляем разницу между созданием и истечением ключа (в секундах)
+            original_duration = (key.expires_at - key.created_at).total_seconds()
+            
+            # Устанавливаем новую дату истечения от текущего момента
+            key.expires_at = key.activated_at + datetime.timedelta(seconds=original_duration)
+            
             db.commit()
             db.refresh(key)
         
@@ -623,13 +634,19 @@ class DiscordRedeemKey(Resource):
         if key.user_id is None:
             key.user_id = user.id
             key.activated_at = datetime.datetime.utcnow()
+            
+            # Вычисляем разницу между созданием и истечением ключа (в секундах)
+            original_duration = (key.expires_at - key.created_at).total_seconds()
+            
+            # Устанавливаем новую дату истечения от текущего момента
+            key.expires_at = key.activated_at + datetime.timedelta(seconds=original_duration)
+            
+            db.commit()
+            db.refresh(key)
         
         # Обновление информации о входе
         ip_address = get_client_ip()
         user.update_login_info(ip_address)
-        
-        db.commit()
-        db.refresh(key)
         
         return {
             "success": True,
@@ -676,9 +693,12 @@ class AdminGetUserInfo(Resource):
                     "id": key.id,
                     "key": key.key,
                     "created_at": key.created_at.isoformat(),
+                    "activated_at": key.activated_at.isoformat() if key.activated_at else None,
                     "expires_at": key.expires_at.isoformat(),
                     "is_active": key.is_active and not key.is_expired(),
-                    "time_left": key.time_left()
+                    "time_left": key.time_left(),
+                    "duration_hours": key.duration_hours(),
+                    "status": "Активирован" if key.activated_at else "Не активирован"
                 } for key in keys
             ]
         }
@@ -1072,9 +1092,12 @@ class AdminGetAllKeys(Resource):
                         "id": key.id,
                         "key": key.key,
                         "created_at": key.created_at.isoformat(),
+                        "activated_at": key.activated_at.isoformat() if key.activated_at else None,
                         "expires_at": key.expires_at.isoformat(),
                         "is_active": key.is_active and not key.is_expired(),
                         "time_left": key.time_left(),
+                        "duration_hours": key.duration_hours(),
+                        "status": "Активирован" if key.activated_at else "Не активирован",
                         "user": {
                             "id": key.user.id,
                             "username": key.user.username

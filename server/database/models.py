@@ -105,10 +105,19 @@ class Key(Base):
     
     def is_expired(self):
         """Проверяет, истёк ли ключ"""
+        # Если ключ не активирован, он не может истечь
+        if not self.activated_at:
+            return False
         return datetime.datetime.utcnow() > self.expires_at
 
     def time_left(self):
         """Возвращает оставшееся время действия ключа в секундах"""
+        # Если ключ не активирован, вернуть полное время, как будто только что создан
+        if not self.activated_at:
+            # Вычисляем исходную продолжительность в секундах (от создания до истечения)
+            original_duration = (self.expires_at - self.created_at).total_seconds()
+            return int(original_duration)
+            
         if self.is_expired():
             return 0
         delta = self.expires_at - datetime.datetime.utcnow()
@@ -117,12 +126,25 @@ class Key(Base):
     @classmethod
     def create_custom_key(cls, key_value, user_id=None, duration_hours=24):
         """Создает ключ с пользовательским значением"""
-        expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
+        # Устанавливаем expires_at на будущую дату от текущего момента
+        # При активации ключа, expires_at будет пересчитан
+        created_at = datetime.datetime.utcnow()
+        expires_at = created_at + datetime.timedelta(hours=duration_hours)
         return cls(
             key=key_value,
             user_id=user_id,
             expires_at=expires_at
         )
+
+    def duration_hours(self):
+        """Возвращает продолжительность действия ключа в часах"""
+        if self.activated_at:
+            # Для активированных ключей берем разницу между expires_at и activated_at
+            duration = (self.expires_at - self.activated_at).total_seconds() / 3600
+        else:
+            # Для неактивированных ключей берем разницу между expires_at и created_at
+            duration = (self.expires_at - self.created_at).total_seconds() / 3600
+        return round(duration, 1)
 
 # Модель инвайт-кода
 class Invite(Base):
