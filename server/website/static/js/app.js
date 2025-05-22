@@ -807,8 +807,8 @@ const auth = {
             const discordNav = document.getElementById('discord-nav');
             
             if (keysNav) keysNav.style.display = 'block';
-            // Скрываем вкладку приглашений, так как она интегрирована в АдминОчку
-            if (invitesNav) invitesNav.style.display = userData.is_admin || userData.is_support ? 'none' : 'block';
+            // Отображаем вкладку приглашений для всех пользователей
+            if (invitesNav) invitesNav.style.display = 'block';
             if (discordNav) discordNav.style.display = 'block';
             
             // Отображение админ-панели для админов и саппорта
