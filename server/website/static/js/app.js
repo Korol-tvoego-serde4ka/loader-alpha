@@ -3674,5 +3674,18 @@ function showChangePasswordModal(userId, username) {
 // Обработчики переключения вкладок администратора
 document.querySelector('#all-keys-tab')?.addEventListener('click', loadAllKeys);
 
+// Настройка обработчиков админ-панели
+function setupAdminEventHandlers() {
+    // Обработчики для админ-панели (если они требуются)
+    document.querySelector('#all-keys-tab')?.addEventListener('click', loadAllKeys);
+    document.querySelector('#users-tab')?.addEventListener('click', () => {
+        updateUsersList();
+    });
+    document.querySelector('#invites-admin-tab')?.addEventListener('click', loadAdminInvites);
+}
+
 // Обработчик поиска ключей
 }
+
+// Запуск приложения при загрузке страницы
+document.addEventListener('DOMContentLoaded', initApp);
